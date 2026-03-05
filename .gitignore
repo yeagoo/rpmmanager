@@ -9,9 +9,10 @@ data/
 web/node_modules/
 web/dist/
 
-# Embedded dist (built from web/dist, keep .gitkeep)
-internal/embed/dist/*
-!internal/embed/dist/.gitkeep
+# Embedded dist (built assets, placeholder is tracked)
+internal/embed/dist/*.js
+internal/embed/dist/*.css
+internal/embed/dist/assets/
 
 # IDE
 .idea/

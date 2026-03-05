@@ -20,8 +20,8 @@ dev-frontend:
 
 # Full production build: frontend → embed → single binary
 build: web-build
-	find internal/embed/dist -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
-	cp -r web/dist/* internal/embed/dist/
+	rm -rf internal/embed/dist
+	cp -r web/dist internal/embed/dist
 	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o bin/rpmmanager ./cmd/rpmmanager
 	@echo "Built bin/rpmmanager ($(VERSION))"
 
@@ -46,8 +46,8 @@ lint:
 # Build all platforms into dist/
 release: web-build
 	rm -rf dist
-	find internal/embed/dist -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
-	cp -r web/dist/* internal/embed/dist/
+	rm -rf internal/embed/dist
+	cp -r web/dist internal/embed/dist
 	@echo "Building $(VERSION) for linux/amd64..."
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o dist/rpmmanager-linux-amd64 ./cmd/rpmmanager
 	@echo "Building $(VERSION) for linux/arm64..."
@@ -66,5 +66,4 @@ docker:
 # ── Clean ────────────────────────────────────────────────────────
 clean:
 	rm -rf bin/ dist/
-	find internal/embed/dist -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
 	rm -rf web/dist web/node_modules
