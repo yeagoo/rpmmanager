@@ -1,0 +1,17 @@
+services:
+  rpmmanager:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: rpmmanager
+    ports:
+      - "8080:8080"
+    volumes:
+      - rpmmanager-data:/data
+      - ./config.yaml:/etc/rpmmanager/config.yaml:ro
+    environment:
+      - RPMMANAGER_SERVER_LISTEN=0.0.0.0:8080
+    restart: unless-stopped
+
+volumes:
+  rpmmanager-data:

@@ -1,0 +1,37 @@
+# RPM Manager Configuration
+server:
+  listen: "0.0.0.0:8080"
+  base_url: "https://rpms.example.com"
+
+auth:
+  username: "admin"
+  password_hash: ""       # Auto-generated on first run
+  api_token: ""           # Auto-generated on first run
+  jwt_secret: ""          # Auto-generated on first run
+
+database:
+  path: "./data/rpmmanager.db"
+
+storage:
+  repo_root: "./data/repos"
+  build_logs: "./data/logs"
+  temp_dir: "./data/tmp"
+
+gpg:
+  home_dir: "./data/gnupg"
+
+tools:
+  nfpm_path: "nfpm"
+  createrepo_path: "createrepo_c"
+  gpg_path: "gpg"
+  rpm_path: "rpm"
+  rpmlint_path: "rpmlint"
+
+monitor:
+  enabled: true
+  default_interval: "6h"
+  github_token: ""
+
+log:
+  level: "info"
+  format: "text"
