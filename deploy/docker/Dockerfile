@@ -13,7 +13,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 COPY --from=frontend /app/web/dist ./web/dist
-RUN rm -rf internal/embed/dist && cp -r web/dist internal/embed/dist
+RUN find internal/embed/dist -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null; cp -r web/dist/* internal/embed/dist/
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o rpmmanager ./cmd/rpmmanager
 
 # Stage 3: Runtime

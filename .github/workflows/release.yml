@@ -33,8 +33,8 @@ jobs:
 
       - name: Embed frontend
         run: |
-          rm -rf internal/embed/dist
-          cp -r web/dist internal/embed/dist
+          find internal/embed/dist -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
+          cp -r web/dist/* internal/embed/dist/
 
       - name: Build binaries
         run: |
