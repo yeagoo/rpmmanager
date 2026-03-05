@@ -11,13 +11,14 @@ import (
 )
 
 var (
-	version   = "dev"
-	cfgFile   string
-	rootCmd   = &cobra.Command{
+	version = "dev"
+	commit  = "none"
+	cfgFile string
+	rootCmd = &cobra.Command{
 		Use:   "rpmmanager",
 		Short: "RPM Manager - Graphical RPM Package Management",
 	}
-	serveCmd  = &cobra.Command{
+	serveCmd = &cobra.Command{
 		Use:   "serve",
 		Short: "Start the RPM Manager server",
 		RunE:  runServe,
@@ -26,7 +27,7 @@ var (
 		Use:   "version",
 		Short: "Print the version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("rpmmanager", version)
+			fmt.Printf("rpmmanager %s (commit: %s)\n", version, commit)
 		},
 	}
 )
