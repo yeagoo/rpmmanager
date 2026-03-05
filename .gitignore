@@ -1,5 +1,6 @@
 # Binary
-rpmmanager
+/rpmmanager
+/bin/
 
 # Data
 data/
