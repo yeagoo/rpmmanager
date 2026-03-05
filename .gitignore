@@ -8,8 +8,9 @@ data/
 web/node_modules/
 web/dist/
 
-# Embedded dist (built from web/dist)
-internal/embed/dist/
+# Embedded dist (built from web/dist, keep .gitkeep)
+internal/embed/dist/*
+!internal/embed/dist/.gitkeep
 
 # IDE
 .idea/
