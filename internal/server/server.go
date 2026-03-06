@@ -23,10 +23,12 @@ import (
 )
 
 type Server struct {
-	cfg        *config.Config
-	db         *sql.DB
-	router     http.Handler
-	monitorSvc *service.MonitorService
+	cfg          *config.Config
+	db           *sql.DB
+	router       http.Handler
+	monitorSvc   *service.MonitorService
+	rateLimiter  *auth.RateLimiter
+	challengeSvc *auth.ChallengeService
 }
 
 func New(cfg *config.Config) (*Server, error) {
@@ -59,7 +61,14 @@ func New(cfg *config.Config) (*Server, error) {
 		FrontendFS:  frontendFS,
 	})
 
-	return &Server{cfg: cfg, db: db, router: result.Handler, monitorSvc: result.MonitorSvc}, nil
+	return &Server{
+		cfg:          cfg,
+		db:           db,
+		router:       result.Handler,
+		monitorSvc:   result.MonitorSvc,
+		rateLimiter:  result.RateLimiter,
+		challengeSvc: result.ChallengeSvc,
+	}, nil
 }
 
 func (s *Server) Run() error {
@@ -88,6 +97,12 @@ func (s *Server) Run() error {
 	// Stop background services
 	if s.monitorSvc != nil {
 		s.monitorSvc.Stop()
+	}
+	if s.rateLimiter != nil {
+		s.rateLimiter.Stop()
+	}
+	if s.challengeSvc != nil {
+		s.challengeSvc.Stop()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

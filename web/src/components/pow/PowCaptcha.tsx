@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { sha256 } from '@/lib/pow/sha256';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -64,7 +64,6 @@ async function solveChallenge(
 export default function PowCaptcha({ onSolved, onError }: PowCaptchaProps) {
   const [status, setStatus] = useState<Status>('loading');
   const [progress, setProgress] = useState(0);
-  const cancelRef = useRef(false);
 
   // Component is remounted via key change on retry, so callbacks are stable at mount.
   useEffect(() => {
@@ -102,7 +101,6 @@ export default function PowCaptcha({ onSolved, onError }: PowCaptchaProps) {
 
     return () => {
       active = false;
-      cancelRef.current = true;
     };
   }, []);
 

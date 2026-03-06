@@ -21,6 +21,11 @@ export default function LoginPage() {
     setAltchaPayload(payload);
   }, []);
 
+  const handleCaptchaError = useCallback(() => {
+    // Auto-retry after 2 seconds on challenge fetch failure
+    setTimeout(() => setCaptchaKey(k => k + 1), 2000);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!altchaPayload) return;
@@ -69,7 +74,7 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <PowCaptcha key={captchaKey} onSolved={handleSolved} />
+            <PowCaptcha key={captchaKey} onSolved={handleSolved} onError={handleCaptchaError} />
             <Button type="submit" className="w-full" disabled={loading || !altchaPayload}>
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>

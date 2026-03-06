@@ -25,8 +25,10 @@ type Deps struct {
 
 // RouterResult holds the router and cleanup functions.
 type RouterResult struct {
-	Handler    http.Handler
-	MonitorSvc *service.MonitorService
+	Handler      http.Handler
+	MonitorSvc   *service.MonitorService
+	RateLimiter  *auth.RateLimiter
+	ChallengeSvc *auth.ChallengeService
 }
 
 func NewRouter(deps *Deps) *RouterResult {
@@ -184,8 +186,10 @@ func NewRouter(deps *Deps) *RouterResult {
 	}
 
 	return &RouterResult{
-		Handler:    r,
-		MonitorSvc: monitorSvc,
+		Handler:      r,
+		MonitorSvc:   monitorSvc,
+		RateLimiter:  rateLimiter,
+		ChallengeSvc: challengeSvc,
 	}
 }
 

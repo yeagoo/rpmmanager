@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/ivmm/rpmmanager/internal/auth"
 )
@@ -33,10 +35,7 @@ func (h *AuthHandler) Challenge(w http.ResponseWriter, r *http.Request) {
 	ip := clientIP(r)
 
 	if waitSec, blocked := h.rateLimiter.Check(ip); blocked {
-		writeJSON(w, http.StatusTooManyRequests, map[string]interface{}{
-			"error":       "too many failed attempts, try again later",
-			"retry_after": waitSec,
-		})
+		writeRateLimited(w, waitSec, "too many failed attempts, try again later")
 		return
 	}
 
@@ -52,19 +51,13 @@ func (h *AuthHandler) Challenge(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ip := clientIP(r)
 
-	// Check rate limit
-	if waitSec, blocked := h.rateLimiter.Check(ip); blocked {
-		writeJSON(w, http.StatusTooManyRequests, map[string]interface{}{
-			"error":       "too many failed attempts, try again later",
-			"retry_after": waitSec,
-		})
-		return
-	}
-	if waitSec, _ := h.rateLimiter.Check(ip); waitSec > 0 {
-		writeJSON(w, http.StatusTooManyRequests, map[string]interface{}{
-			"error":       fmt.Sprintf("please wait %d seconds before trying again", waitSec),
-			"retry_after": waitSec,
-		})
+	// Check rate limit (single call handles both block and backoff)
+	if waitSec, blocked := h.rateLimiter.Check(ip); blocked || waitSec > 0 {
+		msg := fmt.Sprintf("please wait %d seconds before trying again", waitSec)
+		if blocked {
+			msg = "too many failed attempts, try again later"
+		}
+		writeRateLimited(w, waitSec, msg)
 		return
 	}
 
@@ -115,6 +108,14 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func writeRateLimited(w http.ResponseWriter, waitSec int, msg string) {
+	w.Header().Set("Retry-After", strconv.Itoa(waitSec))
+	writeJSON(w, http.StatusTooManyRequests, map[string]interface{}{
+		"error":       msg,
+		"retry_after": waitSec,
+	})
+}
+
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -125,21 +126,13 @@ func decodeJSON(r *http.Request, v interface{}) error {
 	return json.NewDecoder(r.Body).Decode(v)
 }
 
-// clientIP extracts the client IP from X-Forwarded-For, X-Real-IP, or RemoteAddr.
+// clientIP extracts the real client IP.
+// Priority: X-Real-IP (set by trusted reverse proxy) > RemoteAddr.
+// X-Forwarded-For is NOT used because it can be spoofed by the client.
+// If deploying behind Nginx/Caddy, configure them to set X-Real-IP.
 func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// Take the first IP in the chain
-		if i := len(xff); i > 0 {
-			for j := 0; j < len(xff); j++ {
-				if xff[j] == ',' {
-					return xff[:j]
-				}
-			}
-			return xff
-		}
-	}
 	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return xri
+		return strings.TrimSpace(xri)
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

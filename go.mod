@@ -3,6 +3,7 @@ module github.com/ivmm/rpmmanager
 go 1.24.4
 
 require (
+	github.com/altcha-org/altcha-lib-go v1.0.0
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-chi/cors v1.2.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -17,7 +18,6 @@ require (
 )
 
 require (
-	github.com/altcha-org/altcha-lib-go v1.0.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
