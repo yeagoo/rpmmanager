@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { settingsApi } from '@/api/settings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,38 +12,41 @@ import { Save } from 'lucide-react';
 
 interface SettingField {
   key: string;
-  label: string;
-  description: string;
+  labelKey: string;
+  descKey: string;
   type?: 'text' | 'url' | 'number' | 'password';
   section: 'general' | 'notification';
 }
 
 const settingFields: SettingField[] = [
-  { key: 'site_name', label: 'Site Name', description: 'Display name for this RPM Manager instance', section: 'general' },
-  { key: 'base_url', label: 'Base URL', description: 'Public URL for repository access', type: 'url', section: 'general' },
-  { key: 'repo_base_url', label: 'Repository Base URL', description: 'Base URL used in .repo file generation', type: 'url', section: 'general' },
-  { key: 'github_token', label: 'GitHub Token', description: 'Token for GitHub API (version monitoring, release downloads)', type: 'password', section: 'general' },
-  { key: 'max_concurrent_builds', label: 'Max Concurrent Builds', description: 'Maximum number of builds running at the same time', type: 'number', section: 'general' },
-  { key: 'build_timeout', label: 'Build Timeout (seconds)', description: 'Maximum time allowed for a single build', type: 'number', section: 'general' },
-  { key: 'rollback_keep_count', label: 'Rollback Keep Count', description: 'Number of rollback snapshots to keep (default: 3)', type: 'number', section: 'general' },
-  { key: 'notification_url', label: 'Webhook URL', description: 'URL for build notifications (supports Telegram Bot, WeChat Work, DingTalk, or generic webhook)', type: 'url', section: 'notification' },
-  { key: 'notification_events', label: 'Notification Events', description: 'Comma-separated events to notify on (default: build.success,build.failed)', section: 'notification' },
+  { key: 'site_name', labelKey: 'fields.siteName.label', descKey: 'fields.siteName.desc', section: 'general' },
+  { key: 'base_url', labelKey: 'fields.baseUrl.label', descKey: 'fields.baseUrl.desc', type: 'url', section: 'general' },
+  { key: 'repo_base_url', labelKey: 'fields.repoBaseUrl.label', descKey: 'fields.repoBaseUrl.desc', type: 'url', section: 'general' },
+  { key: 'github_token', labelKey: 'fields.githubToken.label', descKey: 'fields.githubToken.desc', type: 'password', section: 'general' },
+  { key: 'max_concurrent_builds', labelKey: 'fields.maxConcurrentBuilds.label', descKey: 'fields.maxConcurrentBuilds.desc', type: 'number', section: 'general' },
+  { key: 'build_timeout', labelKey: 'fields.buildTimeout.label', descKey: 'fields.buildTimeout.desc', type: 'number', section: 'general' },
+  { key: 'rollback_keep_count', labelKey: 'fields.rollbackKeepCount.label', descKey: 'fields.rollbackKeepCount.desc', type: 'number', section: 'general' },
+  { key: 'notification_url', labelKey: 'fields.webhookUrl.label', descKey: 'fields.webhookUrl.desc', type: 'url', section: 'notification' },
+  { key: 'notification_events', labelKey: 'fields.notificationEvents.label', descKey: 'fields.notificationEvents.desc', section: 'notification' },
 ];
 
 export default function SettingsPage() {
+  const { t: tc } = useTranslation('common');
   const { data: settings, isLoading } = useQuery({
     queryKey: ['settings'],
     queryFn: settingsApi.getAll,
   });
 
   if (isLoading) {
-    return <p className="text-muted-foreground">Loading...</p>;
+    return <p className="text-muted-foreground">{tc('loading')}</p>;
   }
 
   return <SettingsForm initialValues={settings || {}} />;
 }
 
 function SettingsForm({ initialValues }: { initialValues: Record<string, string> }) {
+  const { t } = useTranslation('settings');
+  const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>(initialValues);
 
@@ -50,7 +54,7 @@ function SettingsForm({ initialValues }: { initialValues: Record<string, string>
     mutationFn: settingsApi.update,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
-      toast.success('Settings saved');
+      toast.success(t('page.saved'));
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -66,7 +70,7 @@ function SettingsForm({ initialValues }: { initialValues: Record<string, string>
       }
     }
     if (Object.keys(changes).length === 0) {
-      toast.info('No changes to save');
+      toast.info(tc('noChanges'));
       return;
     }
     saveMutation.mutate(changes);
@@ -75,18 +79,18 @@ function SettingsForm({ initialValues }: { initialValues: Record<string, string>
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Settings</h1>
+        <h1 className="text-3xl font-bold">{t('page.title')}</h1>
         <Button onClick={handleSave} disabled={saveMutation.isPending}>
           <Save className="mr-2 h-4 w-4" />
-          {saveMutation.isPending ? 'Saving...' : 'Save'}
+          {saveMutation.isPending ? tc('saving') : tc('save')}
         </Button>
       </div>
 
       {(['general', 'notification'] as const).map((section) => {
         const fields = settingFields.filter((f) => f.section === section);
-        const title = section === 'general' ? 'General' : 'Build Notifications';
+        const title = section === 'general' ? t('sections.general') : t('sections.notifications');
         const desc = section === 'notification'
-          ? 'Configure webhook notifications for build events. Supports Telegram Bot, WeChat Work, DingTalk, and generic webhooks.'
+          ? t('sections.notificationsDesc')
           : undefined;
         return (
           <Card key={section}>
@@ -99,16 +103,16 @@ function SettingsForm({ initialValues }: { initialValues: Record<string, string>
                 <div key={field.key}>
                   {i > 0 && <Separator className="mb-6" />}
                   <div className="space-y-2">
-                    <Label htmlFor={field.key}>{field.label}</Label>
+                    <Label htmlFor={field.key}>{t(field.labelKey)}</Label>
                     <Input
                       id={field.key}
                       type={field.type === 'password' ? 'password' : (field.type || 'text')}
                       value={form[field.key] || ''}
                       onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                      placeholder={field.description}
+                      placeholder={t(field.descKey)}
                       autoComplete={field.type === 'password' ? 'off' : undefined}
                     />
-                    <p className="text-xs text-muted-foreground">{field.description}</p>
+                    <p className="text-xs text-muted-foreground">{t(field.descKey)}</p>
                   </div>
                 </div>
               ))}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { gpgKeysApi, type GPGKey } from '@/api/gpgkeys';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,8 @@ import ImportKeyDialog from '@/components/gpg/ImportKeyDialog';
 import GenerateKeyDialog from '@/components/gpg/GenerateKeyDialog';
 
 export default function GPGKeysPage() {
+  const { t } = useTranslation('gpg');
+  const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
   const [importOpen, setImportOpen] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
@@ -36,7 +39,7 @@ export default function GPGKeysPage() {
     mutationFn: gpgKeysApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gpg-keys'] });
-      toast.success('Key deleted');
+      toast.success(t('page.keyDeleted'));
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -45,7 +48,7 @@ export default function GPGKeysPage() {
     mutationFn: gpgKeysApi.setDefault,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gpg-keys'] });
-      toast.success('Default key updated');
+      toast.success(t('page.defaultKeyUpdated'));
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -72,37 +75,37 @@ export default function GPGKeysPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">GPG Keys</h1>
+        <h1 className="text-3xl font-bold">{t('page.title')}</h1>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="mr-2 h-4 w-4" />
-            Import Key
+            {t('page.importKey')}
           </Button>
           <Button onClick={() => setGenerateOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Generate Key
+            {t('page.generateKey')}
           </Button>
         </div>
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">{tc('loading')}</p>
       ) : !keys?.length ? (
         <div className="rounded-md border border-dashed p-8 text-center">
           <p className="text-muted-foreground">
-            No GPG keys yet. Import an existing key or generate a new one.
+            {t('page.empty')}
           </p>
         </div>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Key ID</TableHead>
-              <TableHead>Algorithm</TableHead>
-              <TableHead>UID</TableHead>
-              <TableHead>Expires</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t('table.name')}</TableHead>
+              <TableHead>{t('table.keyId')}</TableHead>
+              <TableHead>{t('table.algorithm')}</TableHead>
+              <TableHead>{t('table.uid')}</TableHead>
+              <TableHead>{t('table.expires')}</TableHead>
+              <TableHead>{t('table.status')}</TableHead>
               <TableHead className="w-[50px]" />
             </TableRow>
           </TableHeader>
@@ -138,14 +141,14 @@ export default function GPGKeysPage() {
                       {new Date(key.expires_date).toLocaleDateString()}
                     </span>
                   ) : (
-                    <span className="text-sm text-muted-foreground">Never</span>
+                    <span className="text-sm text-muted-foreground">{tc('never')}</span>
                   )}
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    {key.is_default && <Badge>Default</Badge>}
+                    {key.is_default && <Badge>{t('table.default')}</Badge>}
                     {key.has_private && (
-                      <Badge variant="secondary">Private</Badge>
+                      <Badge variant="secondary">{t('table.private')}</Badge>
                     )}
                   </div>
                 </TableCell>
@@ -159,24 +162,24 @@ export default function GPGKeysPage() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => handleExport(key)}>
                         <Download className="mr-2 h-4 w-4" />
-                        Export Public Key
+                        {t('table.exportPublicKey')}
                       </DropdownMenuItem>
                       {!key.is_default && (
                         <DropdownMenuItem onClick={() => setDefaultMutation.mutate(key.id)}>
                           <Star className="mr-2 h-4 w-4" />
-                          Set as Default
+                          {t('table.setAsDefault')}
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => {
-                          if (confirm(`Delete key "${key.name}"?`)) {
+                          if (confirm(t('page.confirmDelete', { name: key.name }))) {
                             deleteMutation.mutate(key.id);
                           }
                         }}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
+                        {tc('delete')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

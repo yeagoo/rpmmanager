@@ -1,0 +1,20 @@
+{
+  "title": "仪表盘",
+  "stats": {
+    "products": "产品",
+    "totalBuilds": "构建总数",
+    "gpgKeys": "GPG 密钥",
+    "activeBuilds": "活跃构建"
+  },
+  "recentBuilds": "最近构建",
+  "noBuilds": "暂无构建记录。",
+  "products": "产品",
+  "noProducts": "暂无产品。",
+  "table": {
+    "product": "产品",
+    "version": "版本",
+    "status": "状态",
+    "name": "名称",
+    "latest": "最新版本"
+  }
+}

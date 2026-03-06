@@ -1,0 +1,17 @@
+{
+  "page": {
+    "title": "Repositories",
+    "empty": "No repositories found. Build a product to create repositories.",
+    "rpms": "{{count}} RPMs",
+    "files": "{{count}} files",
+    "rollback": "Rollback",
+    "selectRepo": "Select a repository to browse files",
+    "emptyDir": "Empty directory",
+    "rollbackTitle": "Rollback: {{product}}",
+    "noSnapshots": "No rollback snapshots available.",
+    "snapshot": "Snapshot",
+    "confirmRollback": "Rollback {{product}} to {{snapshot}}?",
+    "restore": "Restore",
+    "rollbackCompleted": "Rollback completed"
+  }
+}

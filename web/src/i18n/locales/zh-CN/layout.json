@@ -1,0 +1,12 @@
+{
+  "nav": {
+    "dashboard": "仪表盘",
+    "products": "产品",
+    "builds": "构建",
+    "gpgKeys": "GPG 密钥",
+    "repos": "仓库",
+    "monitors": "版本监控",
+    "settings": "设置"
+  },
+  "logout": "退出登录"
+}

@@ -1,0 +1,49 @@
+{
+  "page": {
+    "title": "设置",
+    "saved": "设置已保存"
+  },
+  "sections": {
+    "general": "常规",
+    "notifications": "构建通知",
+    "notificationsDesc": "配置构建事件的 Webhook 通知。支持 Telegram Bot、企业微信、钉钉和通用 Webhook。"
+  },
+  "fields": {
+    "siteName": {
+      "label": "站点名称",
+      "desc": "此 RPM Manager 实例的显示名称"
+    },
+    "baseUrl": {
+      "label": "Base URL",
+      "desc": "仓库的公开访问地址"
+    },
+    "repoBaseUrl": {
+      "label": "仓库 Base URL",
+      "desc": "用于生成 .repo 文件的 Base URL"
+    },
+    "githubToken": {
+      "label": "GitHub Token",
+      "desc": "GitHub API 令牌（用于版本监控和下载 Release）"
+    },
+    "maxConcurrentBuilds": {
+      "label": "最大并发构建数",
+      "desc": "同时运行的最大构建数量"
+    },
+    "buildTimeout": {
+      "label": "构建超时时间（秒）",
+      "desc": "单次构建允许的最大时间"
+    },
+    "rollbackKeepCount": {
+      "label": "回滚快照保留数",
+      "desc": "保留的回滚快照数量（默认：3）"
+    },
+    "webhookUrl": {
+      "label": "Webhook URL",
+      "desc": "构建通知 URL（支持 Telegram Bot、企业微信、钉钉或通用 Webhook）"
+    },
+    "notificationEvents": {
+      "label": "通知事件",
+      "desc": "逗号分隔的通知事件（默认：build.success,build.failed）"
+    }
+  }
+}

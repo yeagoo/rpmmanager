@@ -1,0 +1,56 @@
+{
+  "page": {
+    "title": "构建",
+    "newBuild": "新建构建",
+    "empty": "暂无构建记录。触发一次构建以开始使用。",
+    "triggerBuild": "触发构建",
+    "product": "产品",
+    "selectProduct": "选择产品",
+    "version": "版本",
+    "triggering": "触发中...",
+    "startBuild": "开始构建",
+    "buildTriggered": "构建已触发"
+  },
+  "table": {
+    "id": "#",
+    "product": "产品",
+    "version": "版本",
+    "status": "状态",
+    "trigger": "触发方式",
+    "rpms": "RPM 数",
+    "duration": "耗时",
+    "time": "时间"
+  },
+  "detail": {
+    "title": "构建 #{{id}}",
+    "product": "产品",
+    "version": "版本",
+    "rpmsBuilt": "已构建 RPM",
+    "duration": "耗时",
+    "pipelineProgress": "流水线进度",
+    "error": "错误",
+    "buildLog": "构建日志",
+    "buildCancelled": "构建已取消",
+    "invalidBuildId": "无效的构建 ID"
+  },
+  "status": {
+    "pending": "等待中",
+    "building": "构建中",
+    "signing": "签名中",
+    "publishing": "发布中",
+    "verifying": "验证中",
+    "success": "成功",
+    "failed": "失败",
+    "cancelled": "已取消"
+  },
+  "pipeline": {
+    "build": "构建",
+    "sign": "签名",
+    "publish": "发布",
+    "verify": "验证"
+  },
+  "log": {
+    "live": "实时",
+    "waiting": "等待输出..."
+  }
+}

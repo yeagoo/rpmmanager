@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Check, Loader2, X, Circle } from 'lucide-react';
 
 const STAGES = ['build', 'sign', 'publish', 'verify'];
@@ -8,6 +9,7 @@ interface PipelineProgressProps {
 }
 
 export default function PipelineProgress({ currentStage, status }: PipelineProgressProps) {
+  const { t } = useTranslation('builds');
   const getStageState = (stage: string) => {
     if (status === 'success') return 'completed';
     if (status === 'failed') {
@@ -40,13 +42,13 @@ export default function PipelineProgress({ currentStage, status }: PipelineProgr
               {state === 'running' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
               {state === 'failed' && <X className="h-4 w-4 text-red-500" />}
               {state === 'pending' && <Circle className="h-4 w-4 text-muted-foreground" />}
-              <span className={`text-xs capitalize ${
+              <span className={`text-xs ${
                 state === 'running' ? 'font-medium text-blue-500' :
                 state === 'completed' ? 'text-green-600' :
                 state === 'failed' ? 'text-red-500' :
                 'text-muted-foreground'
               }`}>
-                {stage}
+                {t(`pipeline.${stage}`)}
               </span>
             </div>
           </div>

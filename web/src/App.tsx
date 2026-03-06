@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthContext, useAuthProvider, useAuth } from '@/hooks/useAuth';
 import MainLayout from '@/components/layout/MainLayout';
@@ -25,11 +26,12 @@ const queryClient = new QueryClient({
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const { t } = useTranslation('common');
 
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{t('loading')}</div>
       </div>
     );
   }

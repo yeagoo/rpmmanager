@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { sha256 } from '@/lib/pow/sha256';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -54,7 +55,6 @@ async function solveChallenge(
     }
 
     onProgress(Math.min(99, Math.floor((end / maxNumber) * 100)));
-    // Yield to UI thread
     await new Promise(resolve => setTimeout(resolve, 0));
   }
 
@@ -62,10 +62,10 @@ async function solveChallenge(
 }
 
 export default function PowCaptcha({ onSolved, onError }: PowCaptchaProps) {
+  const { t } = useTranslation('login');
   const [status, setStatus] = useState<Status>('loading');
   const [progress, setProgress] = useState(0);
 
-  // Component is remounted via key change on retry, so callbacks are stable at mount.
   useEffect(() => {
     let active = true;
 
@@ -109,14 +109,14 @@ export default function PowCaptcha({ onSolved, onError }: PowCaptchaProps) {
       {status === 'loading' && (
         <>
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          <span className="text-muted-foreground">Loading security challenge...</span>
+          <span className="text-muted-foreground">{t('pow.loading')}</span>
         </>
       )}
       {status === 'solving' && (
         <>
           <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
           <div className="flex flex-1 items-center gap-2">
-            <span className="text-muted-foreground">Verifying...</span>
+            <span className="text-muted-foreground">{t('pow.verifying')}</span>
             <div className="h-1.5 flex-1 rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-blue-500 transition-all duration-200"
@@ -130,13 +130,13 @@ export default function PowCaptcha({ onSolved, onError }: PowCaptchaProps) {
       {status === 'solved' && (
         <>
           <CheckCircle2 className="h-4 w-4 text-green-500" />
-          <span className="text-green-600">Verified</span>
+          <span className="text-green-600">{t('pow.verified')}</span>
         </>
       )}
       {status === 'error' && (
         <>
           <AlertCircle className="h-4 w-4 text-destructive" />
-          <span className="text-destructive">Verification failed</span>
+          <span className="text-destructive">{t('pow.failed')}</span>
         </>
       )}
     </div>

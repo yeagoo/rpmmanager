@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { monitorsApi, type Monitor } from '@/api/monitors';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,19 +23,23 @@ import {
 import { RefreshCw, Power, PowerOff, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return 'Never';
+import type { TFunction } from 'i18next';
+
+function timeAgo(dateStr: string | null, t: TFunction, tc: TFunction): string {
+  if (!dateStr) return tc('never');
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t('time.justNow');
+  if (mins < 60) return t('time.minsAgo', { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t('time.hoursAgo', { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return t('time.daysAgo', { count: days });
 }
 
 export default function MonitorsPage() {
+  const { t } = useTranslation('monitors');
+  const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
 
   const { data: monitors, isLoading } = useQuery({
@@ -48,7 +53,7 @@ export default function MonitorsPage() {
       monitorsApi.update(productId, { enabled }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['monitors'] });
-      toast.success('Monitor updated');
+      toast.success(t('toast.monitorUpdated'));
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -58,7 +63,7 @@ export default function MonitorsPage() {
       monitorsApi.update(productId, { auto_build }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['monitors'] });
-      toast.success('Auto-build updated');
+      toast.success(t('toast.autoBuildUpdated'));
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -81,7 +86,7 @@ export default function MonitorsPage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['monitors'] });
-      toast.success(`Latest version: ${data.version}`);
+      toast.success(t('toast.latestVersion', { version: data.version }));
       setCheckingProductId(null);
     },
     onError: (err: Error) => {
@@ -93,17 +98,16 @@ export default function MonitorsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Version Monitors</h1>
+        <h1 className="text-3xl font-bold">{t('page.title')}</h1>
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">{tc('loading')}</p>
       ) : !monitors?.length ? (
         <Card>
           <CardContent className="p-8 text-center">
             <p className="text-muted-foreground">
-              No monitors configured. Monitors are automatically created when you create a product with a GitHub source.
-              Create a GitHub-sourced product to get started.
+              {t('page.empty')}
             </p>
           </CardContent>
         </Card>
@@ -111,13 +115,13 @@ export default function MonitorsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Latest Version</TableHead>
-              <TableHead>Last Checked</TableHead>
-              <TableHead>Interval</TableHead>
-              <TableHead>Auto Build</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t('table.product')}</TableHead>
+              <TableHead>{t('table.source')}</TableHead>
+              <TableHead>{t('table.latestVersion')}</TableHead>
+              <TableHead>{t('table.lastChecked')}</TableHead>
+              <TableHead>{t('table.interval')}</TableHead>
+              <TableHead>{t('table.autoBuild')}</TableHead>
+              <TableHead>{t('table.status')}</TableHead>
               <TableHead className="w-[120px]" />
             </TableRow>
           </TableHeader>
@@ -129,7 +133,7 @@ export default function MonitorsPage() {
                   {m.source_type === 'github' ? (
                     <span className="text-sm">{m.source_github_owner}/{m.source_github_repo}</span>
                   ) : (
-                    <span className="text-sm text-muted-foreground">Custom</span>
+                    <span className="text-sm text-muted-foreground">{t('table.custom')}</span>
                   )}
                 </TableCell>
                 <TableCell>
@@ -141,11 +145,11 @@ export default function MonitorsPage() {
                 </TableCell>
                 <TableCell>
                   <span className="text-sm text-muted-foreground">
-                    {timeAgo(m.last_checked_at)}
+                    {timeAgo(m.last_checked_at, t, tc)}
                   </span>
                   {m.last_error && (
                     <div className="text-xs text-destructive" title={m.last_error}>
-                      Error
+                      {tc('error')}
                     </div>
                   )}
                 </TableCell>
@@ -158,11 +162,11 @@ export default function MonitorsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="30m">30 min</SelectItem>
-                      <SelectItem value="1h">1 hour</SelectItem>
-                      <SelectItem value="6h">6 hours</SelectItem>
-                      <SelectItem value="12h">12 hours</SelectItem>
-                      <SelectItem value="24h">24 hours</SelectItem>
+                      <SelectItem value="30m">{t('intervals.30min')}</SelectItem>
+                      <SelectItem value="1h">{t('intervals.1h')}</SelectItem>
+                      <SelectItem value="6h">{t('intervals.6h')}</SelectItem>
+                      <SelectItem value="12h">{t('intervals.12h')}</SelectItem>
+                      <SelectItem value="24h">{t('intervals.24h')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>
@@ -173,7 +177,7 @@ export default function MonitorsPage() {
                     onClick={() => toggleAutoBuild.mutate({ productId: m.product_id, auto_build: !m.auto_build })}
                   >
                     <Zap className="mr-1 h-3 w-3" />
-                    {m.auto_build ? 'On' : 'Off'}
+                    {m.auto_build ? t('table.on') : t('table.off')}
                   </Button>
                 </TableCell>
                 <TableCell>
@@ -183,9 +187,9 @@ export default function MonitorsPage() {
                     onClick={() => toggleMutation.mutate({ productId: m.product_id, enabled: !m.enabled })}
                   >
                     {m.enabled ? (
-                      <><Power className="mr-1 h-3 w-3" /> Active</>
+                      <><Power className="mr-1 h-3 w-3" /> {tc('active')}</>
                     ) : (
-                      <><PowerOff className="mr-1 h-3 w-3" /> Disabled</>
+                      <><PowerOff className="mr-1 h-3 w-3" /> {tc('disabled')}</>
                     )}
                   </Button>
                 </TableCell>
@@ -197,7 +201,7 @@ export default function MonitorsPage() {
                     disabled={checkingProductId === m.product_id}
                   >
                     <RefreshCw className={`mr-1 h-3 w-3 ${checkingProductId === m.product_id ? 'animate-spin' : ''}`} />
-                    Check
+                    {t('table.check')}
                   </Button>
                 </TableCell>
               </TableRow>

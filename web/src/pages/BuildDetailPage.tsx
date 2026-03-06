@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { buildsApi } from '@/api/builds';
 import { useBuildLogWebSocket } from '@/hooks/useWebSocket';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,8 @@ import PipelineProgress from '@/components/builds/PipelineProgress';
 import BuildLogViewer from '@/components/builds/BuildLogViewer';
 
 export default function BuildDetailPage() {
+  const { t } = useTranslation('builds');
+  const { t: tc } = useTranslation('common');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -45,7 +48,7 @@ export default function BuildDetailPage() {
     mutationFn: () => buildsApi.cancel(buildId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['build', id] });
-      toast.success('Build cancelled');
+      toast.success(t('detail.buildCancelled'));
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -53,17 +56,17 @@ export default function BuildDetailPage() {
   // Combine log sources: websocket lines for running, fetched log for finished
   const displayLines = isRunning ? lines : (logContent ? logContent.split('\n') : lines);
 
-  if (!isValidId) return <p className="text-destructive">Invalid build ID</p>;
-  if (!build) return <p className="text-muted-foreground">Loading...</p>;
+  if (!isValidId) return <p className="text-destructive">{t('detail.invalidBuildId')}</p>;
+  if (!build) return <p className="text-muted-foreground">{tc('loading')}</p>;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => navigate('/builds')}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
+          {tc('back')}
         </Button>
-        <h1 className="text-3xl font-bold">Build #{build.id}</h1>
+        <h1 className="text-3xl font-bold">{t('detail.title', { id: build.id })}</h1>
         <BuildStatusBadge status={build.status} />
         {isRunning && (
           <Button
@@ -73,7 +76,7 @@ export default function BuildDetailPage() {
             disabled={cancelMutation.isPending}
           >
             <StopCircle className="mr-2 h-4 w-4" />
-            Cancel
+            {tc('cancel')}
           </Button>
         )}
       </div>
@@ -81,7 +84,7 @@ export default function BuildDetailPage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Product</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('detail.product')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold">{build.product_display_name}</div>
@@ -89,7 +92,7 @@ export default function BuildDetailPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Version</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('detail.version')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold font-mono">{build.version}</div>
@@ -97,7 +100,7 @@ export default function BuildDetailPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">RPMs Built</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('detail.rpmsBuilt')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold">{build.rpm_count}</div>
@@ -105,7 +108,7 @@ export default function BuildDetailPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Duration</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('detail.duration')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold">
@@ -117,7 +120,7 @@ export default function BuildDetailPage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Pipeline Progress</CardTitle>
+          <CardTitle className="text-sm font-medium">{t('detail.pipelineProgress')}</CardTitle>
         </CardHeader>
         <CardContent>
           <PipelineProgress currentStage={build.current_stage} status={build.status} />
@@ -127,7 +130,7 @@ export default function BuildDetailPage() {
       {build.error_message && (
         <Card className="border-destructive">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-destructive">Error</CardTitle>
+            <CardTitle className="text-sm font-medium text-destructive">{t('detail.error')}</CardTitle>
           </CardHeader>
           <CardContent>
             <pre className="text-sm text-destructive whitespace-pre-wrap">{build.error_message}</pre>
@@ -136,7 +139,7 @@ export default function BuildDetailPage() {
       )}
 
       <div>
-        <h2 className="mb-2 text-lg font-semibold">Build Log</h2>
+        <h2 className="mb-2 text-lg font-semibold">{t('detail.buildLog')}</h2>
         <BuildLogViewer lines={displayLines} connected={connected} />
       </div>
     </div>

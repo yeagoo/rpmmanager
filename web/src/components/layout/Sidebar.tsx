@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   Package,
@@ -10,16 +11,18 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/products', label: 'Products', icon: Package },
-  { to: '/builds', label: 'Builds', icon: Hammer },
-  { to: '/gpg-keys', label: 'GPG Keys', icon: KeyRound },
-  { to: '/repos', label: 'Repositories', icon: FolderTree },
-  { to: '/monitors', label: 'Monitors', icon: Radar },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { to: '/products', labelKey: 'nav.products', icon: Package },
+  { to: '/builds', labelKey: 'nav.builds', icon: Hammer },
+  { to: '/gpg-keys', labelKey: 'nav.gpgKeys', icon: KeyRound },
+  { to: '/repos', labelKey: 'nav.repos', icon: FolderTree },
+  { to: '/monitors', labelKey: 'nav.monitors', icon: Radar },
+  { to: '/settings', labelKey: 'nav.settings', icon: Settings },
 ];
 
 export default function AppSidebar() {
+  const { t } = useTranslation('layout');
+
   return (
     <aside className="flex h-screen w-60 flex-col border-r bg-sidebar">
       <div className="flex h-14 items-center border-b px-4">
@@ -40,7 +43,7 @@ export default function AppSidebar() {
             }
           >
             <item.icon className="h-4 w-4" />
-            {item.label}
+            {t(item.labelKey)}
           </NavLink>
         ))}
       </nav>

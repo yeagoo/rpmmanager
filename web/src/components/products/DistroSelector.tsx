@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { productsApi, type DistroInfo } from '@/api/products';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -19,12 +20,13 @@ const PRODUCT_LINE_LABELS: Record<string, string> = {
 };
 
 export default function DistroSelector({ value, onChange }: DistroSelectorProps) {
+  const { t } = useTranslation('products');
   const { data } = useQuery<DistroInfo>({
     queryKey: ['distros'],
     queryFn: productsApi.getDistros,
   });
 
-  if (!data) return <div className="text-muted-foreground text-sm">Loading distros...</div>;
+  if (!data) return <div className="text-muted-foreground text-sm">{t('distroSelector.loadingDistros')}</div>;
 
   const toggleDistro = (dv: string) => {
     if (value.includes(dv)) {
@@ -60,14 +62,14 @@ export default function DistroSelector({ value, onChange }: DistroSelectorProps)
     <div className="space-y-4">
       <div className="flex gap-2">
         <button type="button" onClick={selectAll} className="text-xs text-primary hover:underline">
-          Select All
+          {t('distroSelector.selectAll')}
         </button>
         <span className="text-xs text-muted-foreground">|</span>
         <button type="button" onClick={selectNone} className="text-xs text-primary hover:underline">
-          Clear All
+          {t('distroSelector.clearAll')}
         </button>
         <span className="ml-auto text-xs text-muted-foreground">
-          {value.length} / {data.all_distros.length} selected
+          {t('distroSelector.selectedCount', { selected: value.length, total: data.all_distros.length })}
         </span>
       </div>
 

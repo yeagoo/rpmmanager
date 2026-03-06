@@ -1,0 +1,49 @@
+{
+  "page": {
+    "title": "Settings",
+    "saved": "Settings saved"
+  },
+  "sections": {
+    "general": "General",
+    "notifications": "Build Notifications",
+    "notificationsDesc": "Configure webhook notifications for build events. Supports Telegram Bot, WeChat Work, DingTalk, and generic webhooks."
+  },
+  "fields": {
+    "siteName": {
+      "label": "Site Name",
+      "desc": "Display name for this RPM Manager instance"
+    },
+    "baseUrl": {
+      "label": "Base URL",
+      "desc": "Public URL for repository access"
+    },
+    "repoBaseUrl": {
+      "label": "Repository Base URL",
+      "desc": "Base URL used in .repo file generation"
+    },
+    "githubToken": {
+      "label": "GitHub Token",
+      "desc": "Token for GitHub API (version monitoring, release downloads)"
+    },
+    "maxConcurrentBuilds": {
+      "label": "Max Concurrent Builds",
+      "desc": "Maximum number of builds running at the same time"
+    },
+    "buildTimeout": {
+      "label": "Build Timeout (seconds)",
+      "desc": "Maximum time allowed for a single build"
+    },
+    "rollbackKeepCount": {
+      "label": "Rollback Keep Count",
+      "desc": "Number of rollback snapshots to keep (default: 3)"
+    },
+    "webhookUrl": {
+      "label": "Webhook URL",
+      "desc": "URL for build notifications (supports Telegram Bot, WeChat Work, DingTalk, or generic webhook)"
+    },
+    "notificationEvents": {
+      "label": "Notification Events",
+      "desc": "Comma-separated events to notify on (default: build.success,build.failed)"
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface BuildLogViewerProps {
   lines: string[];
@@ -6,6 +7,7 @@ interface BuildLogViewerProps {
 }
 
 export default function BuildLogViewer({ lines, connected }: BuildLogViewerProps) {
+  const { t } = useTranslation('builds');
   const containerRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
 
@@ -27,7 +29,7 @@ export default function BuildLogViewer({ lines, connected }: BuildLogViewerProps
         {connected && (
           <span className="flex items-center gap-1 text-xs text-green-500">
             <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-            Live
+            {t('log.live')}
           </span>
         )}
       </div>
@@ -37,7 +39,7 @@ export default function BuildLogViewer({ lines, connected }: BuildLogViewerProps
         className="h-[500px] overflow-auto rounded-md border bg-zinc-950 p-4 font-mono text-sm text-zinc-100"
       >
         {lines.length === 0 ? (
-          <span className="text-zinc-500">Waiting for output...</span>
+          <span className="text-zinc-500">{t('log.waiting')}</span>
         ) : (
           lines.map((line, i) => (
             <div key={i} className={

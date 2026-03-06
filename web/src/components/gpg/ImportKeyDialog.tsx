@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { gpgKeysApi } from '@/api/gpgkeys';
 import {
   Dialog,
@@ -20,6 +21,8 @@ interface Props {
 
 export default function ImportKeyDialog({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
+  const { t } = useTranslation('gpg');
+  const { t: tc } = useTranslation('common');
   const [keyData, setKeyData] = useState('');
   const [dragOver, setDragOver] = useState(false);
 
@@ -27,7 +30,7 @@ export default function ImportKeyDialog({ open, onOpenChange }: Props) {
     mutationFn: (data: string) => gpgKeysApi.importKey(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gpg-keys'] });
-      toast.success('Key imported successfully');
+      toast.success(t('import.keyImported'));
       setKeyData('');
       onOpenChange(false);
     },
@@ -58,7 +61,7 @@ export default function ImportKeyDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Import GPG Key</DialogTitle>
+          <DialogTitle>{t('import.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -71,9 +74,9 @@ export default function ImportKeyDialog({ open, onOpenChange }: Props) {
             onDrop={handleDrop}
           >
             <p className="text-sm text-muted-foreground">
-              Drag & drop a .asc or .gpg file here, or{' '}
+              {t('import.dragDrop')}{' '}
               <label className="cursor-pointer text-primary underline">
-                browse
+                {t('import.browse')}
                 <input
                   type="file"
                   className="hidden"
@@ -85,7 +88,7 @@ export default function ImportKeyDialog({ open, onOpenChange }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label>Or paste the armored key below</Label>
+            <Label>{t('import.pasteLabel')}</Label>
             <Textarea
               placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----&#10;...&#10;-----END PGP PUBLIC KEY BLOCK-----"
               value={keyData}
@@ -98,13 +101,13 @@ export default function ImportKeyDialog({ open, onOpenChange }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => { setKeyData(''); setDragOver(false); onOpenChange(false); }}>
-            Cancel
+            {tc('cancel')}
           </Button>
           <Button
             onClick={() => importMutation.mutate(keyData)}
             disabled={!keyData.trim() || importMutation.isPending}
           >
-            {importMutation.isPending ? 'Importing...' : 'Import'}
+            {importMutation.isPending ? t('import.importing') : t('import.importButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

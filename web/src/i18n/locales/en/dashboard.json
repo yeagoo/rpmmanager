@@ -1,0 +1,20 @@
+{
+  "title": "Dashboard",
+  "stats": {
+    "products": "Products",
+    "totalBuilds": "Total Builds",
+    "gpgKeys": "GPG Keys",
+    "activeBuilds": "Active Builds"
+  },
+  "recentBuilds": "Recent Builds",
+  "noBuilds": "No builds yet.",
+  "products": "Products",
+  "noProducts": "No products yet.",
+  "table": {
+    "product": "Product",
+    "version": "Version",
+    "status": "Status",
+    "name": "Name",
+    "latest": "Latest"
+  }
+}

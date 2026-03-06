@@ -1,0 +1,37 @@
+{
+  "page": {
+    "title": "版本监控",
+    "empty": "暂无监控配置。当您创建 GitHub 来源的产品时会自动创建监控。请先创建一个 GitHub 来源的产品。"
+  },
+  "table": {
+    "product": "产品",
+    "source": "来源",
+    "latestVersion": "最新版本",
+    "lastChecked": "上次检查",
+    "interval": "检查间隔",
+    "autoBuild": "自动构建",
+    "status": "状态",
+    "custom": "自定义",
+    "check": "检查",
+    "on": "开启",
+    "off": "关闭"
+  },
+  "intervals": {
+    "30min": "30 分钟",
+    "1h": "1 小时",
+    "6h": "6 小时",
+    "12h": "12 小时",
+    "24h": "24 小时"
+  },
+  "time": {
+    "justNow": "刚刚",
+    "minsAgo": "{{count}} 分钟前",
+    "hoursAgo": "{{count}} 小时前",
+    "daysAgo": "{{count}} 天前"
+  },
+  "toast": {
+    "monitorUpdated": "监控已更新",
+    "autoBuildUpdated": "自动构建已更新",
+    "latestVersion": "最新版本：{{version}}"
+  }
+}

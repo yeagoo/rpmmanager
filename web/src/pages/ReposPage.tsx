@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { reposApi, type RepoInfo, type RepoEntry } from '@/api/repos';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,6 +64,8 @@ function TreeNode({ entry, product, depth = 0 }: { entry: RepoEntry; product: st
 }
 
 export default function ReposPage() {
+  const { t } = useTranslation('repos');
+  const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [rollbackProduct, setRollbackProduct] = useState<string | null>(null);
@@ -90,7 +93,7 @@ export default function ReposPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['repos'] });
       queryClient.invalidateQueries({ queryKey: ['repo-tree'] });
-      toast.success('Rollback completed');
+      toast.success(t('page.rollbackCompleted'));
       setRollbackProduct(null);
     },
     onError: (err: Error) => toast.error(err.message),
@@ -98,13 +101,13 @@ export default function ReposPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-3xl font-bold">Repositories</h1>
+      <h1 className="text-3xl font-bold">{t('page.title')}</h1>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">{tc('loading')}</p>
       ) : !repos?.length ? (
         <div className="rounded-md border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No repositories found. Build a product to create repositories.</p>
+          <p className="text-muted-foreground">{t('page.empty')}</p>
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
@@ -124,12 +127,12 @@ export default function ReposPage() {
                       <HardDrive className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{repo.product}</span>
                     </div>
-                    {repo.has_repomd && <Badge variant="secondary">Active</Badge>}
+                    {repo.has_repomd && <Badge variant="secondary">{tc('active')}</Badge>}
                   </div>
                   <div className="mt-2 flex gap-3 text-xs text-muted-foreground">
-                    <span>{repo.rpm_count} RPMs</span>
+                    <span>{t('page.rpms', { count: repo.rpm_count })}</span>
                     <span>{formatSize(repo.total_size)}</span>
-                    <span>{repo.file_count} files</span>
+                    <span>{t('page.files', { count: repo.file_count })}</span>
                   </div>
                   <div className="mt-2">
                     <Button
@@ -141,7 +144,7 @@ export default function ReposPage() {
                       }}
                     >
                       <RotateCcw className="mr-1 h-3 w-3" />
-                      Rollback
+                      {t('page.rollback')}
                     </Button>
                   </div>
                 </CardContent>
@@ -164,13 +167,13 @@ export default function ReposPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Empty directory</p>
+                    <p className="text-sm text-muted-foreground">{t('page.emptyDir')}</p>
                   )}
                 </CardContent>
               </Card>
             ) : (
               <div className="flex h-64 items-center justify-center rounded-md border border-dashed">
-                <p className="text-muted-foreground">Select a repository to browse files</p>
+                <p className="text-muted-foreground">{t('page.selectRepo')}</p>
               </div>
             )}
           </div>
@@ -181,15 +184,15 @@ export default function ReposPage() {
       <Dialog open={!!rollbackProduct} onOpenChange={(open) => !open && setRollbackProduct(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rollback: {rollbackProduct}</DialogTitle>
+            <DialogTitle>{t('page.rollbackTitle', { product: rollbackProduct })}</DialogTitle>
           </DialogHeader>
           {!rollbacks?.length ? (
-            <p className="text-sm text-muted-foreground">No rollback snapshots available.</p>
+            <p className="text-sm text-muted-foreground">{t('page.noSnapshots')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Snapshot</TableHead>
+                  <TableHead>{t('page.snapshot')}</TableHead>
                   <TableHead className="w-[100px]" />
                 </TableRow>
               </TableHeader>
@@ -202,12 +205,12 @@ export default function ReposPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => {
-                          if (confirm(`Rollback ${rollbackProduct} to ${snapshot}?`)) {
+                          if (confirm(t('page.confirmRollback', { product: rollbackProduct, snapshot }))) {
                             rollbackMutation.mutate({ product: rollbackProduct!, snapshot });
                           }
                         }}
                       >
-                        Restore
+                        {t('page.restore')}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -216,7 +219,7 @@ export default function ReposPage() {
             </Table>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRollbackProduct(null)}>Close</Button>
+            <Button variant="outline" onClick={() => setRollbackProduct(null)}>{tc('close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

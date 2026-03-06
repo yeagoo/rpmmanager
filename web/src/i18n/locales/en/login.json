@@ -1,0 +1,16 @@
+{
+  "title": "RPM Manager",
+  "description": "Sign in to manage your RPM repositories",
+  "username": "Username",
+  "password": "Password",
+  "usernamePlaceholder": "admin",
+  "signIn": "Sign In",
+  "signingIn": "Signing in...",
+  "loginFailed": "Login failed. Check your credentials.",
+  "pow": {
+    "loading": "Loading security challenge...",
+    "verifying": "Verifying...",
+    "verified": "Verified",
+    "failed": "Verification failed"
+  }
+}

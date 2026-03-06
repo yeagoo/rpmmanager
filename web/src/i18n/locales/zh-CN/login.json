@@ -1,0 +1,16 @@
+{
+  "title": "RPM Manager",
+  "description": "登录以管理您的 RPM 仓库",
+  "username": "用户名",
+  "password": "密码",
+  "usernamePlaceholder": "admin",
+  "signIn": "登录",
+  "signingIn": "登录中...",
+  "loginFailed": "登录失败，请检查用户名和密码。",
+  "pow": {
+    "loading": "正在加载安全验证...",
+    "verifying": "验证中...",
+    "verified": "验证通过",
+    "failed": "验证失败"
+  }
+}

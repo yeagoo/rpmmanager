@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { dashboardApi, type DashboardBuild } from '@/api/dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +17,8 @@ import BuildStatusBadge from '@/components/builds/BuildStatusBadge';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation('dashboard');
+  const { t: tc } = useTranslation('common');
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: dashboardApi.get,
@@ -23,19 +26,19 @@ export default function DashboardPage() {
   });
 
   if (isLoading || !data) {
-    return <p className="text-muted-foreground">Loading...</p>;
+    return <p className="text-muted-foreground">{tc('loading')}</p>;
   }
 
   const stats = [
-    { label: 'Products', value: data.product_count, icon: Package, color: 'text-blue-500' },
-    { label: 'Total Builds', value: data.build_count, icon: Hammer, color: 'text-green-500' },
-    { label: 'GPG Keys', value: data.gpg_key_count, icon: KeyRound, color: 'text-purple-500' },
-    { label: 'Active Builds', value: data.active_builds, icon: Activity, color: 'text-orange-500' },
+    { label: t('stats.products'), value: data.product_count, icon: Package, color: 'text-blue-500' },
+    { label: t('stats.totalBuilds'), value: data.build_count, icon: Hammer, color: 'text-green-500' },
+    { label: t('stats.gpgKeys'), value: data.gpg_key_count, icon: KeyRound, color: 'text-purple-500' },
+    { label: t('stats.activeBuilds'), value: data.active_builds, icon: Activity, color: 'text-orange-500' },
   ];
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Dashboard</h1>
+      <h1 className="text-3xl font-bold">{t('title')}</h1>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
@@ -52,21 +55,20 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent Builds */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Builds</CardTitle>
+            <CardTitle>{t('recentBuilds')}</CardTitle>
           </CardHeader>
           <CardContent>
             {data.recent_builds.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No builds yet.</p>
+              <p className="text-sm text-muted-foreground">{t('noBuilds')}</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Version</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>{t('table.product')}</TableHead>
+                    <TableHead>{t('table.version')}</TableHead>
+                    <TableHead>{t('table.status')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -91,21 +93,20 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Products Overview */}
         <Card>
           <CardHeader>
-            <CardTitle>Products</CardTitle>
+            <CardTitle>{t('products')}</CardTitle>
           </CardHeader>
           <CardContent>
             {data.product_summary.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No products yet.</p>
+              <p className="text-sm text-muted-foreground">{t('noProducts')}</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Latest</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>{t('table.name')}</TableHead>
+                    <TableHead>{t('table.latest')}</TableHead>
+                    <TableHead>{t('table.status')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -125,7 +126,7 @@ export default function DashboardPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={p.enabled ? 'default' : 'secondary'}>
-                          {p.enabled ? 'Active' : 'Disabled'}
+                          {p.enabled ? tc('active') : tc('disabled')}
                         </Badge>
                       </TableCell>
                     </TableRow>

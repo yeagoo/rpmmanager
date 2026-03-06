@@ -1,0 +1,17 @@
+{
+  "page": {
+    "title": "仓库",
+    "empty": "未找到仓库。构建一个产品以创建仓库。",
+    "rpms": "{{count}} 个 RPM",
+    "files": "{{count}} 个文件",
+    "rollback": "回滚",
+    "selectRepo": "选择一个仓库以浏览文件",
+    "emptyDir": "空目录",
+    "rollbackTitle": "回滚：{{product}}",
+    "noSnapshots": "没有可用的回滚快照。",
+    "snapshot": "快照",
+    "confirmRollback": "确定将 {{product}} 回滚到 {{snapshot}}？",
+    "restore": "恢复",
+    "rollbackCompleted": "回滚完成"
+  }
+}

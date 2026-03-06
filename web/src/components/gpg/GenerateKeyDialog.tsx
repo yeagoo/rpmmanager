@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { gpgKeysApi, type GenerateKeyRequest } from '@/api/gpgkeys';
 import {
   Dialog,
@@ -35,13 +36,15 @@ const defaultForm: GenerateKeyRequest = {
 
 export default function GenerateKeyDialog({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
+  const { t } = useTranslation('gpg');
+  const { t: tc } = useTranslation('common');
   const [form, setForm] = useState<GenerateKeyRequest>({ ...defaultForm });
 
   const generateMutation = useMutation({
     mutationFn: gpgKeysApi.generate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gpg-keys'] });
-      toast.success('Key generated successfully');
+      toast.success(t('generate.keyGenerated'));
       setForm({ ...defaultForm });
       onOpenChange(false);
     },
@@ -58,12 +61,12 @@ export default function GenerateKeyDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Generate GPG Key</DialogTitle>
+          <DialogTitle>{t('generate.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="gen-name">Name</Label>
+            <Label htmlFor="gen-name">{t('generate.name')}</Label>
             <Input
               id="gen-name"
               placeholder="Your Name"
@@ -73,7 +76,7 @@ export default function GenerateKeyDialog({ open, onOpenChange }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="gen-email">Email</Label>
+            <Label htmlFor="gen-email">{t('generate.email')}</Label>
             <Input
               id="gen-email"
               type="email"
@@ -85,7 +88,7 @@ export default function GenerateKeyDialog({ open, onOpenChange }: Props) {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Algorithm</Label>
+              <Label>{t('generate.algorithm')}</Label>
               <Select
                 value={form.algorithm}
                 onValueChange={(v) => update('algorithm', v)}
@@ -94,16 +97,16 @@ export default function GenerateKeyDialog({ open, onOpenChange }: Props) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="RSA">RSA</SelectItem>
-                  <SelectItem value="EdDSA">EdDSA (Ed25519)</SelectItem>
+                  <SelectItem value="RSA">{t('generate.rsa')}</SelectItem>
+                  <SelectItem value="EdDSA">{t('generate.eddsa')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>Key Length</Label>
+              <Label>{t('generate.keyLength')}</Label>
               {isEdDSA ? (
-                <Input value="256 (Ed25519)" disabled />
+                <Input value={t('generate.ed25519Length')} disabled />
               ) : (
                 <Select
                   value={String(form.key_length)}
@@ -123,7 +126,7 @@ export default function GenerateKeyDialog({ open, onOpenChange }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label>Expiration</Label>
+            <Label>{t('generate.expiration')}</Label>
             <Select
               value={form.expire}
               onValueChange={(v) => update('expire', v)}
@@ -132,11 +135,11 @@ export default function GenerateKeyDialog({ open, onOpenChange }: Props) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="0">Never</SelectItem>
-                <SelectItem value="1y">1 Year</SelectItem>
-                <SelectItem value="2y">2 Years</SelectItem>
-                <SelectItem value="3y">3 Years</SelectItem>
-                <SelectItem value="5y">5 Years</SelectItem>
+                <SelectItem value="0">{t('generate.never')}</SelectItem>
+                <SelectItem value="1y">{t('generate.oneYear')}</SelectItem>
+                <SelectItem value="2y">{t('generate.twoYears')}</SelectItem>
+                <SelectItem value="3y">{t('generate.threeYears')}</SelectItem>
+                <SelectItem value="5y">{t('generate.fiveYears')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -144,13 +147,13 @@ export default function GenerateKeyDialog({ open, onOpenChange }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => { setForm({ ...defaultForm }); onOpenChange(false); }}>
-            Cancel
+            {tc('cancel')}
           </Button>
           <Button
             onClick={() => generateMutation.mutate(form)}
             disabled={!form.name || !form.email || generateMutation.isPending}
           >
-            {generateMutation.isPending ? 'Generating...' : 'Generate'}
+            {generateMutation.isPending ? t('generate.generating') : t('generate.generateButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,0 +1,37 @@
+{
+  "page": {
+    "title": "Version Monitors",
+    "empty": "No monitors configured. Monitors are automatically created when you create a product with a GitHub source. Create a GitHub-sourced product to get started."
+  },
+  "table": {
+    "product": "Product",
+    "source": "Source",
+    "latestVersion": "Latest Version",
+    "lastChecked": "Last Checked",
+    "interval": "Interval",
+    "autoBuild": "Auto Build",
+    "status": "Status",
+    "custom": "Custom",
+    "check": "Check",
+    "on": "On",
+    "off": "Off"
+  },
+  "intervals": {
+    "30min": "30 min",
+    "1h": "1 hour",
+    "6h": "6 hours",
+    "12h": "12 hours",
+    "24h": "24 hours"
+  },
+  "time": {
+    "justNow": "Just now",
+    "minsAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago"
+  },
+  "toast": {
+    "monitorUpdated": "Monitor updated",
+    "autoBuildUpdated": "Auto-build updated",
+    "latestVersion": "Latest version: {{version}}"
+  }
+}

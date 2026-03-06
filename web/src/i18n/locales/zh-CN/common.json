@@ -1,0 +1,15 @@
+{
+  "loading": "加载中...",
+  "save": "保存",
+  "saving": "保存中...",
+  "cancel": "取消",
+  "delete": "删除",
+  "back": "返回",
+  "close": "关闭",
+  "confirm": "确认",
+  "active": "启用",
+  "disabled": "停用",
+  "never": "永不",
+  "error": "错误",
+  "noChanges": "没有需要保存的更改"
+}

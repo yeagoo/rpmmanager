@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { buildsApi, type Build } from '@/api/builds';
 import { productsApi, type Product } from '@/api/products';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,8 @@ import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function BuildsPage() {
+  const { t } = useTranslation('builds');
+  const { t: tc } = useTranslation('common');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -53,7 +56,7 @@ export default function BuildsPage() {
     mutationFn: () => buildsApi.trigger(Number(selectedProduct), version),
     onSuccess: (build: Build) => {
       queryClient.invalidateQueries({ queryKey: ['builds'] });
-      toast.success('Build triggered');
+      toast.success(t('page.buildTriggered'));
       setOpen(false);
       navigate(`/builds/${build.id}`);
     },
@@ -70,24 +73,24 @@ export default function BuildsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Builds</h1>
+        <h1 className="text-3xl font-bold">{t('page.title')}</h1>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              New Build
+              {t('page.newBuild')}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Trigger Build</DialogTitle>
+              <DialogTitle>{t('page.triggerBuild')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Product</label>
+                <label className="text-sm font-medium">{t('page.product')}</label>
                 <Select value={selectedProduct} onValueChange={setSelectedProduct}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select product" />
+                    <SelectValue placeholder={t('page.selectProduct')} />
                   </SelectTrigger>
                   <SelectContent>
                     {products?.map((p: Product) => (
@@ -99,7 +102,7 @@ export default function BuildsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Version</label>
+                <label className="text-sm font-medium">{t('page.version')}</label>
                 <Input
                   value={version}
                   onChange={(e) => setVersion(e.target.value)}
@@ -111,7 +114,7 @@ export default function BuildsPage() {
                 onClick={() => triggerMutation.mutate()}
                 disabled={!selectedProduct || !version || triggerMutation.isPending}
               >
-                {triggerMutation.isPending ? 'Triggering...' : 'Start Build'}
+                {triggerMutation.isPending ? t('page.triggering') : t('page.startBuild')}
               </Button>
             </div>
           </DialogContent>
@@ -119,23 +122,23 @@ export default function BuildsPage() {
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">{tc('loading')}</p>
       ) : !builds?.length ? (
         <div className="rounded-md border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No builds yet. Trigger a build to get started.</p>
+          <p className="text-muted-foreground">{t('page.empty')}</p>
         </div>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>#</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Version</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Trigger</TableHead>
-              <TableHead>RPMs</TableHead>
-              <TableHead>Duration</TableHead>
-              <TableHead>Time</TableHead>
+              <TableHead>{t('table.id')}</TableHead>
+              <TableHead>{t('table.product')}</TableHead>
+              <TableHead>{t('table.version')}</TableHead>
+              <TableHead>{t('table.status')}</TableHead>
+              <TableHead>{t('table.trigger')}</TableHead>
+              <TableHead>{t('table.rpms')}</TableHead>
+              <TableHead>{t('table.duration')}</TableHead>
+              <TableHead>{t('table.time')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

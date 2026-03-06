@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { Product } from '@/api/products';
 import { gpgKeysApi, type GPGKey } from '@/api/gpgkeys';
 import { Input } from '@/components/ui/input';
@@ -45,6 +46,8 @@ const EMPTY_PRODUCT: Partial<Product> = {
 
 export default function ProductForm({ initialData, onSubmit, loading }: ProductFormProps) {
   const [form, setForm] = useState<Partial<Product>>(initialData || EMPTY_PRODUCT);
+  const { t } = useTranslation('products');
+  const { t: tc } = useTranslation('common');
 
   const { data: gpgKeys } = useQuery<GPGKey[]>({
     queryKey: ['gpg-keys'],
@@ -64,19 +67,19 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
     <form onSubmit={handleSubmit}>
       <Tabs defaultValue="basic" className="w-full">
         <TabsList className="mb-4">
-          <TabsTrigger value="basic">Basic</TabsTrigger>
-          <TabsTrigger value="packaging">Packaging</TabsTrigger>
-          <TabsTrigger value="distros">Distros</TabsTrigger>
-          <TabsTrigger value="scripts">Scripts</TabsTrigger>
-          <TabsTrigger value="systemd">Systemd</TabsTrigger>
-          <TabsTrigger value="config">Config</TabsTrigger>
+          <TabsTrigger value="basic">{t('form.basic')}</TabsTrigger>
+          <TabsTrigger value="packaging">{t('form.packaging')}</TabsTrigger>
+          <TabsTrigger value="distros">{t('form.distros')}</TabsTrigger>
+          <TabsTrigger value="scripts">{t('form.scripts')}</TabsTrigger>
+          <TabsTrigger value="systemd">{t('form.systemd')}</TabsTrigger>
+          <TabsTrigger value="config">{t('form.config')}</TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Basic */}
         <TabsContent value="basic" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="name">Name (slug)</Label>
+              <Label htmlFor="name">{t('form.nameSlug')}</Label>
               <Input
                 id="name"
                 value={form.name || ''}
@@ -85,10 +88,10 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
                 pattern="[a-z0-9][a-z0-9-]*[a-z0-9]"
                 required
               />
-              <p className="text-xs text-muted-foreground">Lowercase, hyphens allowed (e.g., caddy, lite-speed)</p>
+              <p className="text-xs text-muted-foreground">{t('form.nameHint')}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="display_name">Display Name</Label>
+              <Label htmlFor="display_name">{t('form.displayName')}</Label>
               <Input
                 id="display_name"
                 value={form.display_name || ''}
@@ -100,7 +103,7 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">{t('form.description')}</Label>
             <Textarea
               id="description"
               value={form.description || ''}
@@ -111,7 +114,7 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
           </div>
 
           <div className="space-y-2">
-            <Label>Source Type</Label>
+            <Label>{t('form.sourceType')}</Label>
             <Select
               value={form.source_type || 'github'}
               onValueChange={(v) => update('source_type', v as 'github' | 'url')}
@@ -120,8 +123,8 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="github">GitHub Release</SelectItem>
-                <SelectItem value="url">Custom URL</SelectItem>
+                <SelectItem value="github">{t('form.githubRelease')}</SelectItem>
+                <SelectItem value="url">{t('form.customUrl')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -129,7 +132,7 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
           {form.source_type === 'github' ? (
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>GitHub Owner</Label>
+                <Label>{t('form.githubOwner')}</Label>
                 <Input
                   value={form.source_github_owner || ''}
                   onChange={(e) => update('source_github_owner', e.target.value)}
@@ -137,7 +140,7 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
                 />
               </div>
               <div className="space-y-2">
-                <Label>GitHub Repo</Label>
+                <Label>{t('form.githubRepo')}</Label>
                 <Input
                   value={form.source_github_repo || ''}
                   onChange={(e) => update('source_github_repo', e.target.value)}
@@ -147,20 +150,20 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
             </div>
           ) : (
             <div className="space-y-2">
-              <Label>URL Template</Label>
+              <Label>{t('form.urlTemplate')}</Label>
               <Input
                 value={form.source_url_template || ''}
                 onChange={(e) => update('source_url_template', e.target.value)}
                 placeholder="https://example.com/releases/{version}/binary-{arch}"
               />
               <p className="text-xs text-muted-foreground">
-                Use {'{'} version {'}'} and {'{'} arch {'}'} as placeholders
+                {t('form.urlTemplateHint')}
               </p>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label>Homepage</Label>
+            <Label>{t('form.homepage')}</Label>
             <Input
               value={form.homepage || ''}
               onChange={(e) => update('homepage', e.target.value)}
@@ -173,7 +176,7 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
         <TabsContent value="packaging" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Maintainer</Label>
+              <Label>{t('form.maintainer')}</Label>
               <Input
                 value={form.maintainer || ''}
                 onChange={(e) => update('maintainer', e.target.value)}
@@ -181,7 +184,7 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
               />
             </div>
             <div className="space-y-2">
-              <Label>Vendor</Label>
+              <Label>{t('form.vendor')}</Label>
               <Input
                 value={form.vendor || ''}
                 onChange={(e) => update('vendor', e.target.value)}
@@ -191,7 +194,7 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
           </div>
 
           <div className="space-y-2">
-            <Label>License</Label>
+            <Label>{t('form.license')}</Label>
             <Input
               value={form.license || ''}
               onChange={(e) => update('license', e.target.value)}
@@ -200,7 +203,7 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
           </div>
 
           <div className="space-y-2">
-            <Label>nfpm Config (JSON)</Label>
+            <Label>{t('form.nfpmConfig')}</Label>
             <Textarea
               value={form.nfpm_config || '{}'}
               onChange={(e) => update('nfpm_config', e.target.value)}
@@ -217,7 +220,7 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
           </div>
 
           <div className="space-y-2">
-            <Label>Architectures</Label>
+            <Label>{t('form.architectures')}</Label>
             <div className="flex gap-4">
               {['x86_64', 'aarch64'].map((arch) => (
                 <label key={arch} className="flex items-center gap-2 text-sm">
@@ -250,7 +253,7 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
         {/* Tab 4: Scripts */}
         <TabsContent value="scripts" className="space-y-4">
           <div className="space-y-2">
-            <Label>Post-install Script</Label>
+            <Label>{t('form.postInstallScript')}</Label>
             <Textarea
               value={form.script_postinstall || ''}
               onChange={(e) => update('script_postinstall', e.target.value)}
@@ -260,7 +263,7 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
             />
           </div>
           <div className="space-y-2">
-            <Label>Pre-remove Script</Label>
+            <Label>{t('form.preRemoveScript')}</Label>
             <Textarea
               value={form.script_preremove || ''}
               onChange={(e) => update('script_preremove', e.target.value)}
@@ -274,7 +277,7 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
         {/* Tab 5: Systemd */}
         <TabsContent value="systemd" className="space-y-4">
           <div className="space-y-2">
-            <Label>Systemd Service File</Label>
+            <Label>{t('form.systemdServiceFile')}</Label>
             <Textarea
               value={form.systemd_service || ''}
               onChange={(e) => update('systemd_service', e.target.value)}
@@ -298,30 +301,30 @@ WantedBy=multi-user.target`}
         {/* Tab 6: Config */}
         <TabsContent value="config" className="space-y-4">
           <div className="space-y-2">
-            <Label>GPG Signing Key</Label>
+            <Label>{t('form.gpgSigningKey')}</Label>
             <Select
               value={form.gpg_key_id != null ? String(form.gpg_key_id) : 'none'}
               onValueChange={(v) => update('gpg_key_id', v === 'none' ? null : Number(v))}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a GPG key" />
+                <SelectValue placeholder={t('form.selectGpgKey')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">No GPG key</SelectItem>
+                <SelectItem value="none">{t('form.noGpgKey')}</SelectItem>
                 {(gpgKeys || []).map((key) => (
                   <SelectItem key={key.id} value={String(key.id)}>
                     {key.uid_name} ({key.key_id}) — {key.algorithm}
-                    {key.is_default ? ' [default]' : ''}
+                    {key.is_default ? ` ${t('form.gpgDefault')}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Used for RPM signing, repomd.xml signing, and Repo RPM generation
+              {t('form.gpgKeyHint')}
             </p>
           </div>
           <div className="space-y-2">
-            <Label>Default Config File Path</Label>
+            <Label>{t('form.defaultConfigPath')}</Label>
             <Input
               value={form.default_config_path || ''}
               onChange={(e) => update('default_config_path', e.target.value)}
@@ -329,7 +332,7 @@ WantedBy=multi-user.target`}
             />
           </div>
           <div className="space-y-2">
-            <Label>Default Config Content</Label>
+            <Label>{t('form.defaultConfigContent')}</Label>
             <Textarea
               value={form.default_config || ''}
               onChange={(e) => update('default_config', e.target.value)}
@@ -339,11 +342,11 @@ WantedBy=multi-user.target`}
             />
           </div>
           <div className="space-y-2">
-            <Label>Base URL Override</Label>
+            <Label>{t('form.baseUrlOverride')}</Label>
             <Input
               value={form.base_url || ''}
               onChange={(e) => update('base_url', e.target.value)}
-              placeholder="Leave empty to use global base URL"
+              placeholder={t('form.baseUrlOverrideHint')}
             />
           </div>
         </TabsContent>
@@ -351,7 +354,7 @@ WantedBy=multi-user.target`}
 
       <div className="mt-6 flex justify-end gap-2">
         <Button type="submit" disabled={loading}>
-          {loading ? 'Saving...' : initialData ? 'Update Product' : 'Create Product'}
+          {loading ? tc('saving') : initialData ? t('form.updateProduct') : t('form.createProduct')}
         </Button>
       </div>
     </form>

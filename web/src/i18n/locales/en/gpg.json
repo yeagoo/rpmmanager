@@ -1,0 +1,51 @@
+{
+  "page": {
+    "title": "GPG Keys",
+    "importKey": "Import Key",
+    "generateKey": "Generate Key",
+    "empty": "No GPG keys yet. Import an existing key or generate a new one.",
+    "keyDeleted": "Key deleted",
+    "defaultKeyUpdated": "Default key updated",
+    "confirmDelete": "Delete key \"{{name}}\"?"
+  },
+  "table": {
+    "name": "Name",
+    "keyId": "Key ID",
+    "algorithm": "Algorithm",
+    "uid": "UID",
+    "expires": "Expires",
+    "status": "Status",
+    "default": "Default",
+    "private": "Private",
+    "exportPublicKey": "Export Public Key",
+    "setAsDefault": "Set as Default"
+  },
+  "import": {
+    "title": "Import GPG Key",
+    "dragDrop": "Drag & drop a .asc or .gpg file here, or",
+    "browse": "browse",
+    "pasteLabel": "Or paste the armored key below",
+    "importing": "Importing...",
+    "importButton": "Import",
+    "keyImported": "Key imported successfully"
+  },
+  "generate": {
+    "title": "Generate GPG Key",
+    "name": "Name",
+    "email": "Email",
+    "algorithm": "Algorithm",
+    "rsa": "RSA",
+    "eddsa": "EdDSA (Ed25519)",
+    "keyLength": "Key Length",
+    "ed25519Length": "256 (Ed25519)",
+    "expiration": "Expiration",
+    "never": "Never",
+    "oneYear": "1 Year",
+    "twoYears": "2 Years",
+    "threeYears": "3 Years",
+    "fiveYears": "5 Years",
+    "generating": "Generating...",
+    "generateButton": "Generate",
+    "keyGenerated": "Key generated successfully"
+  }
+}

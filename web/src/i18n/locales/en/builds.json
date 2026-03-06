@@ -1,0 +1,56 @@
+{
+  "page": {
+    "title": "Builds",
+    "newBuild": "New Build",
+    "empty": "No builds yet. Trigger a build to get started.",
+    "triggerBuild": "Trigger Build",
+    "product": "Product",
+    "selectProduct": "Select product",
+    "version": "Version",
+    "triggering": "Triggering...",
+    "startBuild": "Start Build",
+    "buildTriggered": "Build triggered"
+  },
+  "table": {
+    "id": "#",
+    "product": "Product",
+    "version": "Version",
+    "status": "Status",
+    "trigger": "Trigger",
+    "rpms": "RPMs",
+    "duration": "Duration",
+    "time": "Time"
+  },
+  "detail": {
+    "title": "Build #{{id}}",
+    "product": "Product",
+    "version": "Version",
+    "rpmsBuilt": "RPMs Built",
+    "duration": "Duration",
+    "pipelineProgress": "Pipeline Progress",
+    "error": "Error",
+    "buildLog": "Build Log",
+    "buildCancelled": "Build cancelled",
+    "invalidBuildId": "Invalid build ID"
+  },
+  "status": {
+    "pending": "Pending",
+    "building": "Building",
+    "signing": "Signing",
+    "publishing": "Publishing",
+    "verifying": "Verifying",
+    "success": "Success",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "pipeline": {
+    "build": "Build",
+    "sign": "Sign",
+    "publish": "Publish",
+    "verify": "Verify"
+  },
+  "log": {
+    "live": "Live",
+    "waiting": "Waiting for output..."
+  }
+}

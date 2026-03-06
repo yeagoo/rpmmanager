@@ -1,0 +1,51 @@
+{
+  "page": {
+    "title": "GPG 密钥",
+    "importKey": "导入密钥",
+    "generateKey": "生成密钥",
+    "empty": "暂无 GPG 密钥。导入现有密钥或生成新密钥。",
+    "keyDeleted": "密钥已删除",
+    "defaultKeyUpdated": "默认密钥已更新",
+    "confirmDelete": "确定删除密钥 \"{{name}}\"？"
+  },
+  "table": {
+    "name": "名称",
+    "keyId": "密钥 ID",
+    "algorithm": "算法",
+    "uid": "UID",
+    "expires": "到期时间",
+    "status": "状态",
+    "default": "默认",
+    "private": "私钥",
+    "exportPublicKey": "导出公钥",
+    "setAsDefault": "设为默认"
+  },
+  "import": {
+    "title": "导入 GPG 密钥",
+    "dragDrop": "拖拽 .asc 或 .gpg 文件到此处，或",
+    "browse": "浏览文件",
+    "pasteLabel": "或在下方粘贴 ASCII 格式的密钥",
+    "importing": "导入中...",
+    "importButton": "导入",
+    "keyImported": "密钥导入成功"
+  },
+  "generate": {
+    "title": "生成 GPG 密钥",
+    "name": "名称",
+    "email": "邮箱",
+    "algorithm": "算法",
+    "rsa": "RSA",
+    "eddsa": "EdDSA (Ed25519)",
+    "keyLength": "密钥长度",
+    "ed25519Length": "256 (Ed25519)",
+    "expiration": "有效期",
+    "never": "永不过期",
+    "oneYear": "1 年",
+    "twoYears": "2 年",
+    "threeYears": "3 年",
+    "fiveYears": "5 年",
+    "generating": "生成中...",
+    "generateButton": "生成",
+    "keyGenerated": "密钥生成成功"
+  }
+}

@@ -268,6 +268,7 @@ configure_caddy() {
     local caddyfile="/etc/caddy/Caddyfile"
 
     mkdir -p /etc/caddy /var/log/caddy
+    chown caddy:caddy /var/log/caddy
     if [[ -f "$caddyfile" ]]; then
         local backup="${caddyfile}.bak.$(date +%s)"
         warn "Existing Caddyfile found, backing up to ${backup}"

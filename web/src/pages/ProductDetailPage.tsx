@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { productsApi, type Product } from '@/api/products';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,6 +16,8 @@ export default function ProductDetailPage() {
   const queryClient = useQueryClient();
   const isNew = id === 'new';
   const [activeTab, setActiveTab] = useState('settings');
+  const { t } = useTranslation('products');
+  const { t: tc } = useTranslation('common');
 
   const { data: product, isLoading } = useQuery({
     queryKey: ['product', id],
@@ -26,7 +29,7 @@ export default function ProductDetailPage() {
     mutationFn: (data: Partial<Product>) => productsApi.create(data),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast.success('Product created');
+      toast.success(t('page.productCreated'));
       navigate(`/products/${result.id}`);
     },
     onError: (err: Error) => toast.error(err.message),
@@ -37,7 +40,7 @@ export default function ProductDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['product', id] });
-      toast.success('Product updated');
+      toast.success(t('page.productUpdated'));
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -51,7 +54,7 @@ export default function ProductDetailPage() {
   };
 
   if (!isNew && isLoading) {
-    return <p className="text-muted-foreground">Loading...</p>;
+    return <p className="text-muted-foreground">{tc('loading')}</p>;
   }
 
   return (
@@ -59,10 +62,10 @@ export default function ProductDetailPage() {
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => navigate('/products')}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
+          {tc('back')}
         </Button>
         <h1 className="text-3xl font-bold">
-          {isNew ? 'New Product' : product?.display_name || 'Edit Product'}
+          {isNew ? t('page.newProduct') : product?.display_name || t('page.editProduct')}
         </h1>
       </div>
 
@@ -74,8 +77,8 @@ export default function ProductDetailPage() {
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
-            <TabsTrigger value="settings">Product Settings</TabsTrigger>
-            <TabsTrigger value="repo-rpm">Repo RPM</TabsTrigger>
+            <TabsTrigger value="settings">{t('page.productSettings')}</TabsTrigger>
+            <TabsTrigger value="repo-rpm">{t('repoRpm.title')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="settings" className="mt-4">

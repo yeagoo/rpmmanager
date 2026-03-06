@@ -1,0 +1,12 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "products": "Products",
+    "builds": "Builds",
+    "gpgKeys": "GPG Keys",
+    "repos": "Repositories",
+    "monitors": "Monitors",
+    "settings": "Settings"
+  },
+  "logout": "Logout"
+}
