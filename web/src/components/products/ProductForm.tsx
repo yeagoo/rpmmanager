@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { Product } from '@/api/products';
+import { gpgKeysApi, type GPGKey } from '@/api/gpgkeys';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -43,6 +45,11 @@ const EMPTY_PRODUCT: Partial<Product> = {
 
 export default function ProductForm({ initialData, onSubmit, loading }: ProductFormProps) {
   const [form, setForm] = useState<Partial<Product>>(initialData || EMPTY_PRODUCT);
+
+  const { data: gpgKeys } = useQuery<GPGKey[]>({
+    queryKey: ['gpg-keys'],
+    queryFn: gpgKeysApi.list,
+  });
 
   const update = <K extends keyof Product>(key: K, value: Product[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -290,6 +297,29 @@ WantedBy=multi-user.target`}
 
         {/* Tab 6: Config */}
         <TabsContent value="config" className="space-y-4">
+          <div className="space-y-2">
+            <Label>GPG Signing Key</Label>
+            <Select
+              value={form.gpg_key_id != null ? String(form.gpg_key_id) : 'none'}
+              onValueChange={(v) => update('gpg_key_id', v === 'none' ? null : Number(v))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a GPG key" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No GPG key</SelectItem>
+                {(gpgKeys || []).map((key) => (
+                  <SelectItem key={key.id} value={String(key.id)}>
+                    {key.uid_name} ({key.key_id}) — {key.algorithm}
+                    {key.is_default ? ' [default]' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Used for RPM signing, repomd.xml signing, and Repo RPM generation
+            </p>
+          </div>
           <div className="space-y-2">
             <Label>Default Config File Path</Label>
             <Input

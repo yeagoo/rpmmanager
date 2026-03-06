@@ -1,11 +1,23 @@
+# RPM Manager - Docker Compose
+#
+# Architecture:
+#   rpmmanager (8080) — Admin backend (internal, not exposed to public)
+#   caddy (80/443)    — Public repo file server (serves RPMs, repodata, GPG keys)
+#
+# Usage:
+#   1. Copy config.yaml.example to config.yaml and edit
+#   2. Edit ../caddy/Caddyfile — replace rpms.example.com with your domain
+#   3. docker compose up -d
+
 services:
+  # ── Admin Backend (internal only) ──────────────────────────────
   rpmmanager:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
     container_name: rpmmanager
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"   # Only bind to localhost
     volumes:
       - rpmmanager-data:/data
       - ./config.yaml:/etc/rpmmanager/config.yaml:ro
@@ -13,5 +25,22 @@ services:
       - RPMMANAGER_SERVER_LISTEN=0.0.0.0:8080
     restart: unless-stopped
 
+  # ── Public Repo File Server ────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: rpmmanager-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"    # HTTP/3
+    volumes:
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - rpmmanager-data:/rpmdata:ro     # Read-only access to repos
+      - caddy-data:/data                # Caddy certificates & state
+      - caddy-config:/config            # Caddy runtime config
+    restart: unless-stopped
+
 volumes:
   rpmmanager-data:
+  caddy-data:
+  caddy-config:

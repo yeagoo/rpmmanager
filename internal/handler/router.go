@@ -98,8 +98,8 @@ func NewRouter(deps *Deps) *RouterResult {
 		})
 		r.Post("/api/auth/login", authHandler.Login)
 
-		// Public repo RPM download
-		r.Get("/repos/{product}/repo-rpm/{filename}", repoRPMHandler.PublicDownload)
+		// Public repo RPM download (matches Caddy file path: /{product}/repo-rpm/{filename})
+		r.Get("/{product}/repo-rpm/{filename}", repoRPMHandler.PublicDownload)
 	})
 
 	// Protected API routes

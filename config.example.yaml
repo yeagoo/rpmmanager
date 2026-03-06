@@ -1,7 +1,15 @@
 # RPM Manager Configuration
+#
+# Architecture:
+#   rpmmanager (8080) — Admin backend only (internal)
+#   Caddy (80/443)    — Public repo file server
+#
+# Admin panel is NOT exposed to the public internet.
+# Users download packages through Caddy, which serves repo_root directly.
+#
 server:
-  listen: "0.0.0.0:8080"
-  base_url: "https://rpms.example.com"
+  listen: "127.0.0.1:8080"     # Admin backend, localhost only
+  base_url: "https://rpms.example.com"   # Public URL served by Caddy
 
 auth:
   username: "admin"

@@ -1,0 +1,105 @@
+# RPM Repository Public File Server
+#
+# Architecture:
+#   - rpmmanager (8080): Admin backend, build pipeline, API — internal only
+#   - Caddy (80/443):    Public repo file server — serves RPMs, repodata, GPG keys
+#
+# Usage:
+#   1. Replace rpms.example.com with your actual domain
+#   2. For Docker deployment, this file is mounted into the Caddy container
+#   3. For bare-metal, install Caddy and point to your repo_root directory
+#
+# Behind CDN/Reverse Proxy:
+#   If Caddy is behind CloudFlare, nginx, or another CDN/reverse proxy,
+#   see the "Behind CDN" section below and uncomment the relevant lines.
+
+# ── Direct mode (Caddy handles TLS via Let's Encrypt) ─────────────
+rpms.example.com {
+	root * /rpmdata/repos
+
+	file_server {
+		browse
+	}
+
+	# ── Hide internal directories ────────��─────────────────────
+	@hidden path /.rollback/* /*/templates/*
+	respond @hidden 404
+
+	# ── Cache control (CDN-friendly) ───────────────────────────
+	#
+	# RPM packages: immutable (version is in the filename)
+	@rpm path *.rpm
+	header @rpm Cache-Control "public, max-age=86400, immutable"
+
+	# Repodata: changes after each build, cache briefly
+	@repodata path */repodata/*
+	header @repodata Cache-Control "public, max-age=300"
+
+	# GPG public key: rarely changes
+	@gpgkey path */gpg.key
+	header @gpgkey Cache-Control "public, max-age=604800"
+
+	# .repo files: rarely changes
+	@repofile path *.repo
+	header @repofile Cache-Control "public, max-age=3600"
+
+	# Default: moderate cache
+	header Cache-Control "public, max-age=3600"
+
+	# ── Security headers ───────────────────────────────────────
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		-Server
+	}
+
+	# ── Logging ────────────────────────────────────────────────
+	log {
+		output file /var/log/caddy/repo-access.log {
+			roll_size 100MiB
+			roll_keep 5
+		}
+	}
+}
+
+# ── Behind CDN / Reverse Proxy mode ───────────────────────────────
+# Uncomment this block (and comment the block above) if Caddy is
+# behind CloudFlare, nginx, or another reverse proxy that terminates TLS.
+#
+# :80 {
+# 	root * /rpmdata/repos
+#
+# 	file_server {
+# 		browse
+# 	}
+#
+# 	@hidden path /.rollback/* /*/templates/*
+# 	respond @hidden 404
+#
+# 	@rpm path *.rpm
+# 	header @rpm Cache-Control "public, max-age=86400, immutable"
+#
+# 	@repodata path */repodata/*
+# 	header @repodata Cache-Control "public, max-age=300"
+#
+# 	@gpgkey path */gpg.key
+# 	header @gpgkey Cache-Control "public, max-age=604800"
+#
+# 	@repofile path *.repo
+# 	header @repofile Cache-Control "public, max-age=3600"
+#
+# 	header Cache-Control "public, max-age=3600"
+#
+# 	header {
+# 		X-Content-Type-Options "nosniff"
+# 		X-Frame-Options "DENY"
+# 		-Server
+# 	}
+#
+# 	log {
+# 		output file /var/log/caddy/repo-access.log {
+# 			roll_size 100MiB
+# 			roll_keep 5
+# 		}
+# 	}
+# }

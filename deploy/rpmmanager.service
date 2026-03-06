@@ -1,6 +1,8 @@
 [Unit]
-Description=RPM Manager - Graphical RPM Package Management Tool
+Description=RPM Manager - Admin Backend
 After=network.target
+# Start after Caddy if both are on the same machine
+After=caddy.service
 
 [Service]
 Type=simple
@@ -10,6 +12,9 @@ ExecStart=/usr/local/bin/rpmmanager serve --config /etc/rpmmanager/config.yaml
 Restart=on-failure
 RestartSec=5
 LimitNOFILE=65535
+
+# Bind to localhost only — Caddy serves the public repo on 80/443
+Environment=RPMMANAGER_SERVER_LISTEN=127.0.0.1:8080
 
 # Security hardening
 NoNewPrivileges=true

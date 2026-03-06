@@ -70,8 +70,8 @@ export default function RepoRPMTab({ product }: RepoRPMTabProps) {
   };
 
   const installCmd = existing
-    ? `dnf install ${baseURL}/repos/${product.name}/repo-rpm/${existing.filename}`
-    : `dnf install ${baseURL}/repos/${product.name}/repo-rpm/${product.name}-repo-${version}-1.noarch.rpm`;
+    ? `dnf install ${baseURL}/${product.name}/repo-rpm/${existing.filename}`
+    : `dnf install ${baseURL}/${product.name}/repo-rpm/${product.name}-repo-${version}-1.noarch.rpm`;
 
   const copyInstallCmd = () => {
     navigator.clipboard.writeText(installCmd);

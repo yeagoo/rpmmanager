@@ -1,0 +1,69 @@
+# RPM Repository Public File Server — Bare-metal example
+#
+# Install this as /etc/caddy/Caddyfile (or include from your main Caddyfile)
+#
+# Architecture:
+#   rpmmanager (127.0.0.1:8080) — Admin backend
+#   Caddy (80/443)               — Public repo file server
+#
+# The admin panel is ONLY accessible via localhost:8080.
+# Public users can only browse and download packages via Caddy.
+
+rpms.example.com {
+	# Point to the rpmmanager repo_root directory
+	root * /var/lib/rpmmanager/repos
+
+	file_server {
+		browse
+	}
+
+	# Hide internal directories from public access
+	@hidden path /.rollback/* /*/templates/*
+	respond @hidden 404
+
+	# ── Cache control (CDN-friendly) ───────────────────────────
+	# RPM packages: immutable (version is in the filename)
+	@rpm path *.rpm
+	header @rpm Cache-Control "public, max-age=86400, immutable"
+
+	# Repodata: changes after each build
+	@repodata path */repodata/*
+	header @repodata Cache-Control "public, max-age=300"
+
+	# GPG public key: rarely changes
+	@gpgkey path */gpg.key
+	header @gpgkey Cache-Control "public, max-age=604800"
+
+	# .repo files: rarely changes
+	@repofile path *.repo
+	header @repofile Cache-Control "public, max-age=3600"
+
+	# Default
+	header Cache-Control "public, max-age=3600"
+
+	# Security headers
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/repo-access.log {
+			roll_size 100MiB
+			roll_keep 5
+		}
+	}
+}
+
+# ── Optional: Admin panel reverse proxy ──────────────────────────
+# Only use this if you need remote access to the admin panel.
+# Restrict access via IP whitelist or VPN.
+#
+# admin.rpms.example.com {
+# 	@allowed remote_ip 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+# 	handle @allowed {
+# 		reverse_proxy localhost:8080
+# 	}
+# 	respond 403
+# }
