@@ -10,8 +10,11 @@ Go 后端 + React 前端 + SQLite，编译为单二进制文件，同时支持 D
 - **构建流水线** — 4 阶段自动化：下载 → 签名 → 发布 → 验证，实时 WebSocket 日志
 - **GPG 密钥管理** — Web UI 导入/生成密钥，关联到产品进行 RPM 和 repomd 签名
 - **仓库浏览** — 文件树浏览、.repo 文件预览、一键回滚
+- **Repo RPM 生成** — 一键生成 `-repo` 安装包，用户 `dnf install` 即可自动配置仓库和 GPG 密钥
 - **版本监控** — 自动检测 GitHub Release 新版本，可选自动触发构建
 - **Webhook** — 支持 CI/CD 通过 API Token 触发构建
+- **PoW 登录保护** — 基于 Altcha 协议的 CPU 算力证明，替代传统验证码，防止暴力破解
+- **IP 速率限制** — 登录失败指数退避（1s→2s→4s→8s→封禁 15 分钟）
 
 ## 系统要求
 
@@ -34,7 +37,35 @@ Go 后端 + React 前端 + SQLite，编译为单二进制文件，同时支持 D
 
 ## 快速开始
 
-### 方式一：Docker Compose（推荐）
+### 方式一：一键安装（推荐）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yeagoo/rpmmanager/main/install.sh | sudo bash
+```
+
+安装脚本自动完成：下载二进制、校验 SHA-256、创建系统用户、配置 systemd 服务，并可交互式设置 Caddy 反代（两域架构）。
+
+支持的选项：
+
+```bash
+# 指定版本
+curl -fsSL ... | sudo bash -s -- --version v0.1.0
+
+# 全自动安装（跳过所有交互确认）
+curl -fsSL ... | sudo bash -s -- --domain rpms.example.com --admin-port 28088 --yes
+
+# 所有选项
+--version    VERSION   指定版本（默认: latest）
+--prefix     PATH      安装路径（默认: /usr/local/bin）
+--domain     DOMAIN    公共仓库域名（启用 Caddy 配置）
+--admin      DOMAIN    管理后台域名（默认: admin.<domain>）
+--admin-port PORT      管理后台端口（默认: 28088）
+--no-service           跳过 systemd 服务安装
+--no-caddy             跳过 Caddy 配置
+--yes                  非交互模式
+```
+
+### 方式二：Docker Compose
 
 ```bash
 # 克隆仓库
@@ -60,7 +91,7 @@ docker compose logs rpmmanager | grep "Generated admin password"
 
 访问 `http://localhost:8080` 登录。
 
-### 方式二：预编译二进制
+### 方式三：手动安装预编译二进制
 
 从 [GitHub Releases](https://github.com/ivmm/rpmmanager/releases) 下载对应架构的二进制文件：
 
@@ -78,7 +109,7 @@ vi /etc/rpmmanager/config.yaml
 ./rpmmanager serve --config /etc/rpmmanager/config.yaml
 ```
 
-### 方式三：从源码编译
+### 方式四：从源码编译
 
 ```bash
 git clone https://github.com/ivmm/rpmmanager.git
@@ -87,7 +118,7 @@ cd rpmmanager
 # 一键构建（前端 + 后端 → 单二进制）
 make build
 
-# 产物：./rpmmanager（约 13MB，内嵌前端资源）
+# 产物：./rpmmanager（约 14MB，内嵌前端资源）
 ./rpmmanager serve --config config.example.yaml
 ```
 
@@ -99,14 +130,16 @@ make build
 
 ```yaml
 server:
-  listen: "0.0.0.0:8080"       # 监听地址
-  base_url: "https://rpms.example.com"  # 公开访问地址，用于 .repo 文件生成和 CORS
+  listen: "127.0.0.1:8080"     # 监听地址（Caddy 反代时绑定 127.0.0.1）
+  base_url: "https://admin.rpms.example.com:28088"  # 管理后台地址（CORS、内部链接）
+  repo_base_url: "https://rpms.example.com"         # 公共仓库地址（.repo 文件生成）
 
 auth:
   username: "admin"             # 管理员用户名
   password_hash: ""             # bcrypt 哈希，留空则首次启动自动生成密码
   api_token: ""                 # Webhook/CI 用 API Token，留空则自动生成
   jwt_secret: ""                # JWT 签名密钥，留空则自动生成
+  hmac_key: ""                  # PoW challenge 签名密钥，留空则复用 jwt_secret
 
 database:
   path: "./data/rpmmanager.db"  # SQLite 数据库路径
@@ -150,7 +183,35 @@ export RPMMANAGER_MONITOR_GITHUB_TOKEN="ghp_xxxx"
 
 ## 生产部署
 
-### Systemd 服务
+### 推荐方式：一键安装脚本
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yeagoo/rpmmanager/main/install.sh | sudo bash
+```
+
+脚本以交互式引导完成全部设置，包括 Caddy 反代配置。详见 [快速开始](#方式一一键安装推荐)。
+
+### 部署架构
+
+RPM Manager 推荐使用**两域架构**，通过 Caddy 分离公共仓库和管理后台：
+
+```
+rpms.example.com (80/443)
+├── 公共 RPM 仓库（Caddy file_server 直接提供文件服务）
+├── /{product}/{distro}/{arch}/*.rpm
+├── /{product}/{distro}/{arch}/repodata/
+└── /{product}/repo-rpm/*.rpm → reverse_proxy → rpmmanager
+
+admin.rpms.example.com:28088 (HTTPS)
+└── 管理 UI + API → reverse_proxy → rpmmanager (127.0.0.1:8080)
+```
+
+- **公共仓库域名** — 端用户访问，Caddy 直接从文件系统提供 RPM 包和 repodata，高性能
+- **管理后台域名** — 运行在自定义端口（默认 28088），通过防火墙或 IP 白名单限制访问
+
+### 手动部署
+
+如果不使用安装脚本，手动步骤如下：
 
 ```bash
 # 创建系统用户
@@ -161,60 +222,73 @@ sudo cp rpmmanager /usr/local/bin/
 sudo chmod +x /usr/local/bin/rpmmanager
 
 # 创建目录
-sudo mkdir -p /etc/rpmmanager /var/lib/rpmmanager /var/log/rpmmanager
+sudo mkdir -p /etc/rpmmanager /var/lib/rpmmanager/{repos,logs,tmp,gnupg} /var/log/rpmmanager
 sudo chown -R rpmmanager:rpmmanager /var/lib/rpmmanager /var/log/rpmmanager
+sudo chmod 700 /var/lib/rpmmanager/gnupg
 
 # 配置文件
 sudo cp config.example.yaml /etc/rpmmanager/config.yaml
 sudo vi /etc/rpmmanager/config.yaml
-# 修改 database.path, storage.* 路径指向 /var/lib/rpmmanager/
 
 # 安装服务
 sudo cp deploy/rpmmanager.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now rpmmanager
 
-# 查看日志
-sudo journalctl -u rpmmanager -f
-```
-
-配置文件中的路径建议修改为：
-
-```yaml
-database:
-  path: "/var/lib/rpmmanager/rpmmanager.db"
-storage:
-  repo_root: "/var/lib/rpmmanager/repos"
-  build_logs: "/var/log/rpmmanager"
-  temp_dir: "/var/lib/rpmmanager/tmp"
-gpg:
-  home_dir: "/var/lib/rpmmanager/gnupg"
+# 查看首次生成的密码
+sudo journalctl -u rpmmanager | grep "Generated admin password"
 ```
 
 ### 安装构建依赖
 
-**RHEL / AlmaLinux / Rocky Linux 9：**
+**RHEL / AlmaLinux / Rocky Linux / Fedora：**
 
 ```bash
 sudo dnf install -y gnupg2 createrepo_c rpm-sign rpmlint
 
 # 安装 nfpm
-sudo rpm -i https://github.com/goreleaser/nfpm/releases/download/v2.41.1/nfpm_2.41.1_amd64.rpm
+sudo rpm -i https://github.com/goreleaser/nfpm/releases/download/v2.41.1/nfpm_2.41.1_$(uname -m).rpm
 ```
 
-**Fedora：**
+### Caddy 反向代理（两域架构）
 
-```bash
-sudo dnf install -y gnupg2 createrepo_c rpm-sign rpmlint
-sudo rpm -i https://github.com/goreleaser/nfpm/releases/download/v2.41.1/nfpm_2.41.1_amd64.rpm
+安装脚本会自动生成 Caddyfile。手动配置参考：
+
+```
+# 公共 RPM 仓库 — 端用户访问
+rpms.example.com {
+    root * /var/lib/rpmmanager/repos
+
+    file_server {
+        browse
+    }
+
+    # Repo RPM 下载由 rpmmanager 后端处理
+    @reporpm path_regexp reporpm ^/[^/]+/repo-rpm/.+
+    handle @reporpm {
+        reverse_proxy localhost:8080
+    }
+
+    # 缓存头
+    @rpm path *.rpm
+    header @rpm Cache-Control "public, max-age=86400, immutable"
+
+    @repodata path */repodata/*
+    header @repodata Cache-Control "public, max-age=300"
+}
+
+# 管理后台 — 自定义端口，限制访问
+admin.rpms.example.com:28088 {
+    reverse_proxy localhost:8080
+}
 ```
 
-### Nginx 反向代理
+### Nginx 反向代理（替代方案）
 
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name rpms.example.com;
+    server_name admin.rpms.example.com;
 
     ssl_certificate     /path/to/cert.pem;
     ssl_certificate_key /path/to/key.pem;
@@ -225,7 +299,6 @@ server {
         proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
@@ -240,16 +313,6 @@ server {
     }
 }
 ```
-
-### Caddy 反向代理
-
-```
-rpms.example.com {
-    reverse_proxy localhost:8080
-}
-```
-
-Caddy 自动处理 WebSocket 升级，无需额外配置。
 
 ---
 
@@ -339,7 +402,7 @@ make clean          # 清理构建产物
 rpmmanager/
 ├── cmd/rpmmanager/         # CLI 入口
 ├── internal/
-│   ├── auth/               # JWT + API Token 认证
+│   ├── auth/               # JWT + API Token 认证、PoW challenge、IP 速率限制
 │   ├── config/             # YAML 配置加载
 │   ├── database/           # SQLite + 迁移
 │   ├── distromap/          # 发行版映射 (EL8/EL9/Fedora/openEuler...)
@@ -360,15 +423,21 @@ rpmmanager/
 
 ## API 参考
 
-所有 API 需要 JWT Token 或 API Token 认证（除 `/api/health` 和 `/api/auth/login`）。
+所有 API 需要 JWT Token 或 API Token 认证（除 `/api/health`、`/api/auth/challenge` 和 `/api/auth/login`）。
 
 ### 认证
 
+登录流程需要先获取 PoW challenge，客户端求解后随登录请求一起提交：
+
 ```bash
-# JWT 登录
+# 1. 获取 PoW challenge
+curl http://localhost:8080/api/auth/challenge
+# 返回: {"algorithm":"SHA-256","challenge":"...","maxnumber":100000,"salt":"...","signature":"..."}
+
+# 2. 登录（altcha 为 base64 编码的 PoW 解）
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"your-password"}'
+  -d '{"username":"admin","password":"your-password","altcha":"base64-encoded-solution"}'
 
 # 使用 JWT Token
 curl -H "Authorization: Bearer <jwt-token>" http://localhost:8080/api/products
@@ -382,11 +451,17 @@ curl -H "X-API-Token: <api-token>" http://localhost:8080/api/products
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/health` | 健康检查 |
-| POST | `/api/auth/login` | 登录 |
+| GET | `/api/auth/challenge` | 获取 PoW challenge（公开） |
+| POST | `/api/auth/login` | 登录（需 PoW 解） |
+| GET | `/api/auth/me` | 当前用户信息 |
 | GET | `/api/dashboard` | 仪表盘数据 |
 | GET/POST | `/api/products` | 产品列表/创建 |
 | GET/PUT/DELETE | `/api/products/:id` | 产品详情/更新/删除 |
 | POST | `/api/products/:id/duplicate` | 复制产品 |
+| GET/POST | `/api/products/:id/export` | 导出产品配置 |
+| POST | `/api/products/import` | 导入产品配置 |
+| POST | `/api/products/:id/repo-rpm` | 生成 Repo RPM |
+| GET | `/api/products/:id/repo-rpm` | 获取最新 Repo RPM 信息 |
 | GET/POST | `/api/builds` | 构建列表/触发 |
 | GET | `/api/builds/:id` | 构建详情 |
 | GET | `/api/builds/:id/log` | 构建日志 |
@@ -399,7 +474,9 @@ curl -H "X-API-Token: <api-token>" http://localhost:8080/api/products
 | GET | `/api/repos` | 仓库列表 |
 | GET | `/api/repos/:product/tree` | 仓库文件树 |
 | POST | `/api/repos/:product/rollback` | 回滚仓库 |
+| GET/PUT | `/api/settings` | 系统设置 |
 | GET/PUT | `/api/monitors/:product_id` | 版本监控 |
+| POST | `/api/monitors/:product_id/check` | 立即检查更新 |
 | POST | `/api/webhook/:product` | Webhook 触发构建 |
 
 ### Webhook 示例
@@ -411,6 +488,33 @@ curl -X POST https://rpms.example.com/api/webhook/caddy \
   -H "Content-Type: application/json" \
   -d '{"version": "2.9.0"}'
 ```
+
+---
+
+## 安全特性
+
+### PoW 登录保护
+
+登录页面集成了基于 [Altcha](https://altcha.org) 协议的 CPU 算力证明（Proof-of-Work），无需第三方服务：
+
+1. 客户端从 `/api/auth/challenge` 获取 challenge
+2. 浏览器使用纯 JS SHA-256 暴力求解（约 1-3 秒）
+3. 将解答随用户名密码一起提交
+4. 服务端验证 PoW 解的正确性和签名，防止重放攻击
+
+### IP 速率限制
+
+登录失败时按 IP 进行指数退避：
+
+| 连续失败次数 | 等待时间 |
+|---|---|
+| 1 | 1 秒 |
+| 2 | 2 秒 |
+| 3 | 4 秒 |
+| 4 | 8 秒 |
+| >=5 | 封禁 IP 15 分钟 |
+
+登录成功后自动重置计数。
 
 ---
 
@@ -446,6 +550,24 @@ tools:
 
 ```bash
 docker compose exec rpmmanager nfpm --version
+```
+
+### 端用户如何添加仓库
+
+为产品生成 Repo RPM 后，端用户只需一条命令：
+
+```bash
+# 安装 repo RPM（自动配置仓库地址和 GPG 密钥）
+dnf install https://rpms.example.com/caddy/repo-rpm/caddy-repo-1.0-1.noarch.rpm
+
+# 之后即可正常安装
+dnf install caddy
+```
+
+或手动添加：
+
+```bash
+dnf config-manager --add-repo https://rpms.example.com/caddy/el9/x86_64/
 ```
 
 ---

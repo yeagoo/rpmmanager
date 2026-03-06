@@ -58,7 +58,7 @@ ask() {
 ask_input() {
     local prompt="$1" default="$2"
     local answer
-    echo -en "${BOLD}${prompt} [${default}]: ${NC}"
+    echo -en "${BOLD}${prompt} [${default}]: ${NC}" >&2
     read -r answer </dev/tty
     echo "${answer:-$default}"
 }
