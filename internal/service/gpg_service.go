@@ -77,19 +77,24 @@ func (s *GPGService) ImportKey(keyData []byte) (*models.GPGKey, error) {
 	}
 	defer os.Remove(tmpFile)
 
-	// Import into GPG keyring
+	// Import into GPG keyring; use --status-fd for locale-independent output
 	cmd := exec.Command(s.cfg.Tools.GPGPath, "--homedir", s.cfg.GPG.HomeDir,
-		"--batch", "--import", tmpFile)
-	var stderr bytes.Buffer
+		"--batch", "--status-fd", "1", "--import", tmpFile)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("gpg import: %s", stderr.String())
 	}
 
-	// Parse imported key info
-	fingerprint := s.parseImportedFingerprint(stderr.String())
+	// Parse imported key fingerprint from machine-readable status output
+	fingerprint := parseStatusFingerprint(stdout.String(), "IMPORT_OK")
 	if fingerprint == "" {
-		return nil, fmt.Errorf("could not determine fingerprint from import output")
+		// Fallback: try parsing human-readable stderr (older GPG versions)
+		fingerprint = s.parseImportedFingerprint(stderr.String())
+	}
+	if fingerprint == "" {
+		return nil, fmt.Errorf("could not determine fingerprint from import output: %s", stderr.String())
 	}
 
 	return s.syncKeyFromKeyring(fingerprint, true)
@@ -162,16 +167,22 @@ Expire-Date: %s
 	defer os.Remove(paramFile)
 
 	cmd := exec.Command(s.cfg.Tools.GPGPath, "--homedir", s.cfg.GPG.HomeDir,
-		"--batch", "--gen-key", paramFile)
-	var stderr bytes.Buffer
+		"--batch", "--status-fd", "1", "--gen-key", paramFile)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("gpg gen-key: %s", stderr.String())
 	}
 
-	fingerprint := s.parseGeneratedFingerprint(stderr.String())
+	// Parse fingerprint from machine-readable status output (locale-independent)
+	fingerprint := parseStatusFingerprint(stdout.String(), "KEY_CREATED")
 	if fingerprint == "" {
-		return nil, fmt.Errorf("could not determine fingerprint from gen-key output")
+		// Fallback: try parsing human-readable stderr
+		fingerprint = s.parseGeneratedFingerprint(stderr.String())
+	}
+	if fingerprint == "" {
+		return nil, fmt.Errorf("could not determine fingerprint from gen-key output: %s", stderr.String())
 	}
 
 	return s.syncKeyFromKeyring(fingerprint, false)
@@ -235,6 +246,45 @@ func (s *GPGService) syncKeyFromKeyring(fingerprint string, imported bool) (*mod
 	}
 	key.ID = id
 	return key, nil
+}
+
+// parseStatusFingerprint extracts a fingerprint from GPG's --status-fd output.
+// GPG status lines are locale-independent and follow the format:
+//
+//	[GNUPG:] KEY_CREATED B <fingerprint>
+//	[GNUPG:] IMPORT_OK <reason> <fingerprint>
+func parseStatusFingerprint(statusOutput, keyword string) string {
+	for _, line := range strings.Split(statusOutput, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.Contains(line, keyword) {
+			continue
+		}
+		// Format: [GNUPG:] KEYWORD <args...> <fingerprint>
+		parts := strings.Fields(line)
+		if len(parts) < 3 {
+			continue
+		}
+		// The fingerprint is the last field that looks like a hex string (40 chars for full, 16 for long key ID)
+		for i := len(parts) - 1; i >= 2; i-- {
+			candidate := parts[i]
+			if isHexFingerprint(candidate) {
+				return candidate
+			}
+		}
+	}
+	return ""
+}
+
+func isHexFingerprint(s string) bool {
+	if len(s) < 8 {
+		return false
+	}
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *GPGService) parseImportedFingerprint(output string) string {
