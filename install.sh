@@ -6,10 +6,15 @@
 #   curl -fsSL https://raw.githubusercontent.com/yeagoo/rpmmanager/main/install.sh | bash
 #   curl -fsSL https://raw.githubusercontent.com/yeagoo/rpmmanager/main/install.sh | bash -s -- --version v0.1.0
 #
-# Options (via environment or flags):
-#   --version VERSION   Specific version to install (default: latest)
-#   --prefix  PATH      Install prefix (default: /usr/local/bin)
-#   --no-service        Skip systemd service setup
+# Options:
+#   --version    VERSION   Specific version to install (default: latest)
+#   --prefix     PATH      Install prefix (default: /usr/local/bin)
+#   --domain     DOMAIN    Public repo domain (enables Caddy setup)
+#   --admin      DOMAIN    Admin panel domain (default: admin.<domain>)
+#   --admin-port PORT      Admin panel HTTPS port (default: 28088)
+#   --no-service           Skip systemd service setup
+#   --no-caddy             Skip Caddy setup prompt
+#   --yes                  Non-interactive mode, answer yes to all prompts
 #
 set -euo pipefail
 
@@ -21,13 +26,19 @@ DATA_DIR="/var/lib/rpmmanager"
 LOG_DIR="/var/log/rpmmanager"
 SERVICE_USER="rpmmanager"
 VERSION=""
+REPO_DOMAIN=""
+ADMIN_DOMAIN=""
+ADMIN_PORT="28088"
 SKIP_SERVICE=false
+SKIP_CADDY=false
+AUTO_YES=false
 
 # ── Color helpers ─────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
+BOLD='\033[1m'
 NC='\033[0m'
 
 info()  { echo -e "${BLUE}[INFO]${NC}  $*"; }
@@ -35,12 +46,34 @@ ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 
+ask() {
+    if [[ "$AUTO_YES" == true ]]; then return 0; fi
+    local prompt="$1 [y/N] "
+    local answer
+    echo -en "${BOLD}${prompt}${NC}"
+    read -r answer </dev/tty
+    [[ "$answer" =~ ^[Yy]$ ]]
+}
+
+ask_input() {
+    local prompt="$1" default="$2"
+    local answer
+    echo -en "${BOLD}${prompt} [${default}]: ${NC}"
+    read -r answer </dev/tty
+    echo "${answer:-$default}"
+}
+
 # ── Parse args ────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --version)    VERSION="$2"; shift 2 ;;
         --prefix)     INSTALL_DIR="$2"; shift 2 ;;
+        --domain)     REPO_DOMAIN="$2"; shift 2 ;;
+        --admin)      ADMIN_DOMAIN="$2"; shift 2 ;;
+        --admin-port) ADMIN_PORT="$2"; shift 2 ;;
         --no-service) SKIP_SERVICE=true; shift ;;
+        --no-caddy)   SKIP_CADDY=true; shift ;;
+        --yes|-y)     AUTO_YES=true; shift ;;
         *)            error "Unknown option: $1" ;;
     esac
 done
@@ -84,7 +117,6 @@ get_latest_version() {
     echo "$tag"
 }
 
-# ── Download file ─────────────────────────────────────────────────
 download() {
     local url="$1" dest="$2"
     if command -v curl &>/dev/null; then
@@ -94,14 +126,247 @@ download() {
     fi
 }
 
-# ── Check root ────────────────────────────────────────────────────
 need_root() {
     if [[ $EUID -ne 0 ]]; then
         error "This script must be run as root (or with sudo)"
     fi
 }
 
-# ── Main ──────────────────────────────────────────────────────────
+detect_pkg_manager() {
+    if command -v dnf &>/dev/null; then
+        echo "dnf"
+    elif command -v yum &>/dev/null; then
+        echo "yum"
+    elif command -v apt-get &>/dev/null; then
+        echo "apt"
+    else
+        echo "unknown"
+    fi
+}
+
+# ── Install runtime dependencies ─────────────────────────────────
+install_dependencies() {
+    local pkg_mgr
+    pkg_mgr=$(detect_pkg_manager)
+
+    info "Installing runtime dependencies..."
+
+    case "$pkg_mgr" in
+        dnf|yum)
+            $pkg_mgr install -y createrepo_c gnupg2 rpm-sign rpmlint 2>/dev/null || true
+            if ! command -v nfpm &>/dev/null; then
+                local nfpm_arch
+                nfpm_arch=$(uname -m)
+                info "Installing nfpm..."
+                rpm -i "https://github.com/goreleaser/nfpm/releases/download/v2.41.1/nfpm_2.41.1_${nfpm_arch}.rpm" 2>/dev/null || \
+                    warn "nfpm installation failed (builds may not work)"
+            fi
+            ;;
+        apt)
+            apt-get update -qq
+            apt-get install -y -qq createrepo-c gnupg2 rpm rpmlint 2>/dev/null || true
+            ;;
+        *)
+            warn "Unknown package manager, skipping dependency installation"
+            warn "Please manually install: createrepo_c gnupg2 rpm-sign nfpm"
+            ;;
+    esac
+}
+
+# ── Install Caddy ─────────────────────────────────────────────────
+install_caddy() {
+    if command -v caddy &>/dev/null; then
+        ok "Caddy already installed: $(caddy version 2>/dev/null | head -1)"
+        return 0
+    fi
+
+    local pkg_mgr
+    pkg_mgr=$(detect_pkg_manager)
+
+    info "Installing Caddy..."
+
+    case "$pkg_mgr" in
+        dnf|yum)
+            $pkg_mgr install -y 'dnf-command(copr)' 2>/dev/null || true
+            $pkg_mgr copr enable -y @caddy/caddy 2>/dev/null || true
+            $pkg_mgr install -y caddy || {
+                warn "Caddy repo install failed, trying direct download..."
+                install_caddy_binary
+                return $?
+            }
+            ;;
+        apt)
+            apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https 2>/dev/null
+            curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg 2>/dev/null
+            curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
+            apt-get update -qq
+            apt-get install -y -qq caddy || {
+                warn "Caddy apt install failed, trying direct download..."
+                install_caddy_binary
+                return $?
+            }
+            ;;
+        *)
+            install_caddy_binary
+            return $?
+            ;;
+    esac
+
+    ok "Caddy installed"
+}
+
+install_caddy_binary() {
+    local arch
+    arch=$(uname -m)
+    case "$arch" in
+        x86_64)  arch="amd64" ;;
+        aarch64) arch="arm64" ;;
+    esac
+
+    local caddy_url="https://caddyserver.com/api/download?os=linux&arch=${arch}"
+    info "Downloading Caddy binary..."
+    download "$caddy_url" "/usr/local/bin/caddy" || {
+        error "Failed to download Caddy"
+    }
+    chmod +x /usr/local/bin/caddy
+
+    if ! id caddy &>/dev/null; then
+        useradd -r -s /sbin/nologin -d /var/lib/caddy caddy
+    fi
+    mkdir -p /var/lib/caddy /var/log/caddy /etc/caddy
+    chown caddy:caddy /var/lib/caddy /var/log/caddy
+
+    if [[ ! -f /etc/systemd/system/caddy.service ]]; then
+        cat > /etc/systemd/system/caddy.service <<'CSVC'
+[Unit]
+Description=Caddy
+After=network.target network-online.target
+Requires=network-online.target
+
+[Service]
+Type=notify
+User=caddy
+Group=caddy
+ExecStart=/usr/local/bin/caddy run --environ --config /etc/caddy/Caddyfile
+ExecReload=/usr/local/bin/caddy reload --config /etc/caddy/Caddyfile
+TimeoutStopSec=5s
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+CSVC
+        systemctl daemon-reload
+    fi
+    ok "Caddy binary installed"
+}
+
+# ── Configure Caddy (two-domain architecture) ────────────────────
+configure_caddy() {
+    local repo_domain="$1"
+    local admin_domain="$2"
+    local admin_port="$3"
+    local caddyfile="/etc/caddy/Caddyfile"
+
+    mkdir -p /etc/caddy /var/log/caddy
+    if [[ -f "$caddyfile" ]]; then
+        local backup="${caddyfile}.bak.$(date +%s)"
+        warn "Existing Caddyfile found, backing up to ${backup}"
+        cp "$caddyfile" "$backup"
+    fi
+
+    info "Generating Caddyfile..."
+    info "  Repo:  ${repo_domain} (:80/:443)"
+    info "  Admin: ${admin_domain} (:${admin_port})"
+
+    cat > "$caddyfile" <<EOF
+# RPM Manager — auto-generated by install.sh
+#
+# Public repo:  ${repo_domain} (ports 80/443)
+# Admin panel:  ${admin_domain}:${admin_port} (HTTPS)
+
+# ── Public RPM Repository ────────────────────────────────────────
+# Serves RPM packages, repodata, GPG keys directly from filesystem.
+# No authentication required — this is what end users access.
+#
+${repo_domain} {
+	root * ${DATA_DIR}/repos
+
+	file_server {
+		browse
+	}
+
+	# Hide internal directories
+	@hidden path /.rollback/* /*/templates/*
+	respond @hidden 404
+
+	# Repo RPM public download (e.g. dnf install https://${repo_domain}/caddy/repo-rpm/caddy-repo-1.0-1.noarch.rpm)
+	# These are served by rpmmanager backend
+	@reporpm path_regexp reporpm ^/[^/]+/repo-rpm/.+
+	handle @reporpm {
+		reverse_proxy localhost:8080
+	}
+
+	# ── Cache headers ────────────────────────────────────────
+	@rpm path *.rpm
+	header @rpm Cache-Control "public, max-age=86400, immutable"
+
+	@repodata path */repodata/*
+	header @repodata Cache-Control "public, max-age=300"
+
+	@gpgkey path */gpg.key
+	header @gpgkey Cache-Control "public, max-age=604800"
+
+	@repofile path *.repo
+	header @repofile Cache-Control "public, max-age=3600"
+
+	# Security headers
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/repo-access.log {
+			roll_size 100MiB
+			roll_keep 5
+		}
+	}
+}
+
+# ── Admin Panel ──────────────────────────────────────────────────
+# Management UI and API. Runs on a separate domain and custom port.
+# Consider restricting access via firewall or IP whitelist.
+#
+${admin_domain}:${admin_port} {
+	reverse_proxy localhost:8080
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/admin-access.log {
+			roll_size 50MiB
+			roll_keep 3
+		}
+	}
+}
+EOF
+
+    # Grant caddy user read access to repo data
+    usermod -aG "${SERVICE_USER}" caddy 2>/dev/null || true
+    chmod 750 "${DATA_DIR}"
+    chmod 755 "${DATA_DIR}/repos"
+
+    ok "Caddyfile generated: ${caddyfile}"
+}
+
+# ══════════════════════════════════════════════════════════════════
+# ── Main ─────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════
 main() {
     echo ""
     echo -e "${BLUE}╔══════════════════════════════════════╗${NC}"
@@ -111,19 +376,19 @@ main() {
 
     need_root
 
-    # Detect platform
+    # ── Step 1: Detect platform ──────────────────────────────
     local platform
     platform=$(detect_platform)
     info "Platform: ${platform}"
 
-    # Get version
+    # ── Step 2: Get version ──────────────────────────────────
     if [[ -z "$VERSION" ]]; then
         info "Fetching latest version..."
         VERSION=$(get_latest_version)
     fi
     info "Version:  ${VERSION}"
 
-    # Download binary
+    # ── Step 3: Download & verify binary ─────────────────────
     local binary_name="rpmmanager-${platform}"
     local download_url="https://github.com/${REPO}/releases/download/${VERSION}/${binary_name}"
     local tmp_dir
@@ -133,7 +398,6 @@ main() {
     info "Downloading ${binary_name}..."
     download "$download_url" "${tmp_dir}/rpmmanager" || error "Download failed. Check the version and try again."
 
-    # Download checksums and verify
     local checksum_url="https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt"
     if download "$checksum_url" "${tmp_dir}/checksums.txt" 2>/dev/null; then
         info "Verifying checksum..."
@@ -148,34 +412,39 @@ main() {
         warn "Could not download checksums, skipping verification"
     fi
 
-    # Install binary
+    # ── Step 4: Install binary ───────────────────────────────
     info "Installing to ${INSTALL_DIR}/rpmmanager..."
     install -m 755 "${tmp_dir}/rpmmanager" "${INSTALL_DIR}/rpmmanager"
     ok "Binary installed: ${INSTALL_DIR}/rpmmanager"
 
-    # Verify
     local installed_version
     installed_version=$("${INSTALL_DIR}/rpmmanager" version 2>/dev/null || echo "unknown")
     ok "Installed: ${installed_version}"
 
-    # Create user
+    # ── Step 5: Create user & directories ────────────────────
     if ! id "$SERVICE_USER" &>/dev/null; then
         info "Creating system user: ${SERVICE_USER}"
         useradd -r -s /sbin/nologin -d "$DATA_DIR" "$SERVICE_USER"
         ok "User created"
     fi
 
-    # Create directories
     info "Creating directories..."
     mkdir -p "$CONFIG_DIR" "$DATA_DIR"/{repos,logs,tmp,gnupg} "$LOG_DIR"
     chown -R "${SERVICE_USER}:${SERVICE_USER}" "$DATA_DIR" "$LOG_DIR"
     chmod 700 "$DATA_DIR/gnupg"
     ok "Directories created"
 
-    # Create default config if not exists
+    # ── Step 6: Install runtime dependencies ─────────────────
+    if ask "Install runtime dependencies (createrepo_c, gnupg2, rpm-sign, nfpm)?"; then
+        install_dependencies
+    else
+        info "Skipping dependency installation"
+    fi
+
+    # ── Step 7: Default config ───────────────────────────────
     if [[ ! -f "${CONFIG_DIR}/config.yaml" ]]; then
         info "Creating default config..."
-        cat > "${CONFIG_DIR}/config.yaml" <<'YAML'
+        cat > "${CONFIG_DIR}/config.yaml" <<YAML
 server:
   listen: "127.0.0.1:8080"
   base_url: "http://localhost:8080"
@@ -185,15 +454,15 @@ auth:
   # password_hash, jwt_secret, api_token are auto-generated on first run
 
 database:
-  path: "/var/lib/rpmmanager/rpmmanager.db"
+  path: "${DATA_DIR}/rpmmanager.db"
 
 storage:
-  repo_root: "/var/lib/rpmmanager/repos"
-  build_logs: "/var/lib/rpmmanager/logs"
-  temp_dir: "/var/lib/rpmmanager/tmp"
+  repo_root: "${DATA_DIR}/repos"
+  build_logs: "${DATA_DIR}/logs"
+  temp_dir: "${DATA_DIR}/tmp"
 
 gpg:
-  home_dir: "/var/lib/rpmmanager/gnupg"
+  home_dir: "${DATA_DIR}/gnupg"
 
 monitor:
   enabled: true
@@ -210,9 +479,9 @@ YAML
         warn "Config already exists, skipping: ${CONFIG_DIR}/config.yaml"
     fi
 
-    # Systemd service
+    # ── Step 8: Systemd service for rpmmanager ───────────────
     if [[ "$SKIP_SERVICE" == false ]] && command -v systemctl &>/dev/null; then
-        info "Installing systemd service..."
+        info "Installing rpmmanager systemd service..."
         cat > /etc/systemd/system/rpmmanager.service <<EOF
 [Unit]
 Description=RPM Manager
@@ -237,54 +506,160 @@ PrivateTmp=true
 WantedBy=multi-user.target
 EOF
         systemctl daemon-reload
-        ok "Systemd service installed"
-
-        echo ""
-        info "To start RPM Manager:"
-        echo "  systemctl enable --now rpmmanager"
-        echo ""
-        info "To check status:"
-        echo "  systemctl status rpmmanager"
-        echo "  journalctl -u rpmmanager -f"
-    elif [[ "$SKIP_SERVICE" == true ]]; then
-        info "Skipping systemd service (--no-service)"
-    else
-        warn "systemctl not found, skipping service installation"
+        ok "rpmmanager.service installed"
     fi
 
-    # Check runtime dependencies
-    echo ""
-    info "Checking runtime dependencies..."
-    local missing=()
-    command -v createrepo_c &>/dev/null || missing+=("createrepo_c")
-    command -v gpg &>/dev/null         || missing+=("gnupg2")
-    command -v rpmsign &>/dev/null     || missing+=("rpm-sign")
-    command -v nfpm &>/dev/null        || missing+=("nfpm")
+    # ── Step 9: Caddy setup ──────────────────────────────────
+    local setup_caddy=false
 
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        warn "Missing optional dependencies: ${missing[*]}"
+    if [[ "$SKIP_CADDY" == false ]] && [[ -n "$REPO_DOMAIN" ]]; then
+        # Domains provided via flags
+        if [[ -z "$ADMIN_DOMAIN" ]]; then
+            ADMIN_DOMAIN="admin.${REPO_DOMAIN}"
+        fi
+        setup_caddy=true
+    elif [[ "$SKIP_CADDY" == false ]] && [[ -z "$REPO_DOMAIN" ]]; then
         echo ""
-        echo "  Install on RHEL/AlmaLinux/Rocky:"
-        echo "    dnf install createrepo_c gnupg2 rpm-sign rpmlint"
+        echo -e "${BOLD}── Caddy Setup ──${NC}"
         echo ""
-        echo "  Install nfpm:"
-        echo "    rpm -i https://github.com/goreleaser/nfpm/releases/download/v2.41.1/nfpm_2.41.1_\$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/').rpm"
-    else
-        ok "All runtime dependencies found"
+        echo "  RPM Manager uses a two-domain architecture:"
+        echo ""
+        echo "    rpms.example.com        → Public RPM repo (ports 80/443)"
+        echo "       Direct file serving for packages, repodata, GPG keys"
+        echo ""
+        echo "    admin.rpms.example.com  → Admin panel (custom port, default ${ADMIN_PORT})"
+        echo "       Management UI, build triggers, settings"
+        echo ""
+        echo "  Both are served by Caddy with automatic HTTPS (Let's Encrypt)."
+        echo ""
+
+        if ask "Set up Caddy with this two-domain architecture?"; then
+            REPO_DOMAIN=$(ask_input "Public repo domain" "rpms.example.com")
+            local default_admin="admin.${REPO_DOMAIN}"
+            ADMIN_DOMAIN=$(ask_input "Admin panel domain" "${default_admin}")
+            ADMIN_PORT=$(ask_input "Admin panel HTTPS port" "${ADMIN_PORT}")
+            setup_caddy=true
+        fi
     fi
 
-    # Done
+    if [[ "$setup_caddy" == true ]]; then
+        install_caddy
+        configure_caddy "$REPO_DOMAIN" "$ADMIN_DOMAIN" "$ADMIN_PORT"
+
+        # Update rpmmanager config with the real URLs
+        if [[ -f "${CONFIG_DIR}/config.yaml" ]]; then
+            # base_url = admin panel URL (used for CORS and internal links)
+            local admin_url="https://${ADMIN_DOMAIN}:${ADMIN_PORT}"
+            # repo_base_url = public repo URL (used in .repo files)
+            local repo_url="https://${REPO_DOMAIN}"
+
+            sed -i "s|base_url:.*|base_url: \"${admin_url}\"|" "${CONFIG_DIR}/config.yaml"
+
+            # Add repo_base_url if not present
+            if grep -q "repo_base_url" "${CONFIG_DIR}/config.yaml"; then
+                sed -i "s|repo_base_url:.*|repo_base_url: \"${repo_url}\"|" "${CONFIG_DIR}/config.yaml"
+            else
+                sed -i "/base_url:/a\\  repo_base_url: \"${repo_url}\"" "${CONFIG_DIR}/config.yaml"
+            fi
+
+            ok "Updated config:"
+            ok "  base_url:      ${admin_url}"
+            ok "  repo_base_url: ${repo_url}"
+        fi
+
+        # Firewall hint
+        echo ""
+        info "Firewall: make sure these ports are open:"
+        echo "    80, 443  — Public repo (Caddy auto-HTTPS)"
+        echo "    ${ADMIN_PORT}      — Admin panel"
+        echo ""
+        echo "  Example (firewalld):"
+        echo "    firewall-cmd --permanent --add-port={80,443,${ADMIN_PORT}}/tcp"
+        echo "    firewall-cmd --reload"
+        echo ""
+
+        # Start services
+        if ask "Start rpmmanager and Caddy now?"; then
+            systemctl enable --now rpmmanager
+            ok "rpmmanager started"
+
+            systemctl enable --now caddy
+            ok "Caddy started"
+
+            echo ""
+            info "Waiting for first-run password generation..."
+            sleep 2
+            local pw_line
+            pw_line=$(journalctl -u rpmmanager --no-pager -n 50 2>/dev/null | grep "Generated admin password" || true)
+            if [[ -n "$pw_line" ]]; then
+                echo ""
+                echo -e "  ${RED}${BOLD}${pw_line}${NC}"
+                echo ""
+            else
+                warn "Could not find generated password. Check: journalctl -u rpmmanager | grep password"
+            fi
+        else
+            echo ""
+            info "Start manually when ready:"
+            echo "  systemctl enable --now rpmmanager"
+            echo "  systemctl enable --now caddy"
+        fi
+    else
+        # No Caddy
+        if [[ "$SKIP_SERVICE" == false ]] && command -v systemctl &>/dev/null; then
+            echo ""
+            if ask "Start rpmmanager now?"; then
+                systemctl enable --now rpmmanager
+                ok "rpmmanager started"
+
+                sleep 2
+                local pw_line
+                pw_line=$(journalctl -u rpmmanager --no-pager -n 50 2>/dev/null | grep "Generated admin password" || true)
+                if [[ -n "$pw_line" ]]; then
+                    echo ""
+                    echo -e "  ${RED}${BOLD}${pw_line}${NC}"
+                    echo ""
+                fi
+            else
+                echo ""
+                info "Start manually:"
+                echo "  systemctl enable --now rpmmanager"
+            fi
+        fi
+    fi
+
+    # ── Done ─────────────────────────────────────────────────
     echo ""
-    echo -e "${GREEN}╔══════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║     Installation complete!           ║${NC}"
-    echo -e "${GREEN}╚══════════════════════════════════════╝${NC}"
+    echo -e "${GREEN}╔══════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║            Installation complete!                   ║${NC}"
+    echo -e "${GREEN}╚══════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo "  Binary:  ${INSTALL_DIR}/rpmmanager"
-    echo "  Config:  ${CONFIG_DIR}/config.yaml"
-    echo "  Data:    ${DATA_DIR}/"
+    echo "  Binary:   ${INSTALL_DIR}/rpmmanager"
+    echo "  Config:   ${CONFIG_DIR}/config.yaml"
+    echo "  Data:     ${DATA_DIR}/"
+
+    if [[ "$setup_caddy" == true ]]; then
+        echo "  Caddyfile: /etc/caddy/Caddyfile"
+        echo ""
+        echo -e "  ${BOLD}Public repo:${NC}   https://${REPO_DOMAIN}"
+        echo -e "  ${BOLD}Admin panel:${NC}   https://${ADMIN_DOMAIN}:${ADMIN_PORT}"
+        echo ""
+        echo "  End users install packages via:"
+        echo "    dnf config-manager --add-repo https://${REPO_DOMAIN}/<product>/<distro>/\$basearch/"
+        echo ""
+        echo "  Caddy auto-obtains Let's Encrypt certificates."
+        echo "  Make sure DNS for both domains points to this server."
+    else
+        echo ""
+        echo "  Admin panel: http://127.0.0.1:8080"
+        echo ""
+        echo "  To expose publicly, re-run with:"
+        echo "    install.sh --domain rpms.example.com"
+    fi
+
     echo ""
-    echo "  First run will print the generated admin password to stderr."
-    echo "  Make sure to save it!"
+    echo "  First run generates a random admin password."
+    echo "  View it:  journalctl -u rpmmanager | grep 'Generated admin password'"
     echo ""
 }
 
