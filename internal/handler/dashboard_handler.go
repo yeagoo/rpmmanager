@@ -14,12 +14,12 @@ func NewDashboardHandler(db *sql.DB) *DashboardHandler {
 }
 
 type DashboardData struct {
-	ProductCount    int               `json:"product_count"`
-	BuildCount      int               `json:"build_count"`
-	GPGKeyCount     int               `json:"gpg_key_count"`
-	ActiveBuilds    int               `json:"active_builds"`
-	RecentBuilds    []DashboardBuild  `json:"recent_builds"`
-	ProductSummary  []ProductSummary  `json:"product_summary"`
+	ProductCount   int              `json:"product_count"`
+	BuildCount     int              `json:"build_count"`
+	GPGKeyCount    int              `json:"gpg_key_count"`
+	ActiveBuilds   int              `json:"active_builds"`
+	RecentBuilds   []DashboardBuild `json:"recent_builds"`
+	ProductSummary []ProductSummary `json:"product_summary"`
 }
 
 type DashboardBuild struct {

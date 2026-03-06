@@ -144,4 +144,3 @@ func (r *BuildRepo) HasRunningBuild(productID int64) (bool, error) {
 		productID).Scan(&count)
 	return count > 0, err
 }
-

@@ -21,16 +21,20 @@ func (s *Service) Middleware(next http.Handler) http.Handler {
 			}
 		}
 
-		// Try Bearer token (JWT)
+		// Try Bearer token (JWT) from header or query param
 		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
+		tokenStr := ""
+		if authHeader != "" {
+			tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
+			if tokenStr == authHeader {
+				http.Error(w, `{"error":"invalid authorization header"}`, http.StatusUnauthorized)
+				return
+			}
+		} else if qToken := r.URL.Query().Get("token"); qToken != "" {
+			// Fallback: ?token= query param (for WebSocket connections)
+			tokenStr = qToken
+		} else {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
-			return
-		}
-
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenStr == authHeader {
-			http.Error(w, `{"error":"invalid authorization header"}`, http.StatusUnauthorized)
 			return
 		}
 

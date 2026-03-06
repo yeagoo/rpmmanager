@@ -15,19 +15,21 @@ import (
 )
 
 type MonitorService struct {
-	cfg      *config.Config
-	repo     *repository.MonitorRepo
-	buildSvc *BuildService
-	stopCh   chan struct{}
-	mu       sync.Mutex
+	cfg          *config.Config
+	repo         *repository.MonitorRepo
+	settingsRepo *repository.SettingsRepo
+	buildSvc     *BuildService
+	stopCh       chan struct{}
+	mu           sync.Mutex
 }
 
-func NewMonitorService(cfg *config.Config, repo *repository.MonitorRepo, buildSvc *BuildService) *MonitorService {
+func NewMonitorService(cfg *config.Config, repo *repository.MonitorRepo, settingsRepo *repository.SettingsRepo, buildSvc *BuildService) *MonitorService {
 	return &MonitorService{
-		cfg:      cfg,
-		repo:     repo,
-		buildSvc: buildSvc,
-		stopCh:   make(chan struct{}),
+		cfg:          cfg,
+		repo:         repo,
+		settingsRepo: settingsRepo,
+		buildSvc:     buildSvc,
+		stopCh:       make(chan struct{}),
 	}
 }
 
@@ -146,8 +148,15 @@ func (s *MonitorService) checkGitHubRelease(owner, repo string) (string, error) 
 		return "", err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
-	if s.cfg.Monitor.GithubToken != "" {
-		req.Header.Set("Authorization", "Bearer "+s.cfg.Monitor.GithubToken)
+	// Prefer settings DB token, fall back to config file
+	token := s.cfg.Monitor.GithubToken
+	if s.settingsRepo != nil {
+		if dbToken, err := s.settingsRepo.Get("github_token"); err == nil && dbToken != "" {
+			token = dbToken
+		}
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -14,9 +15,8 @@ import (
 var preserveDirs = []string{"repo-rpm"}
 
 // StagePublish atomically swaps staging to production with backup.
-func StagePublish(ctx context.Context, repoRoot, productName, stagingDir string, log *LogWriter) error {
+func StagePublish(ctx context.Context, repoRoot, productName, stagingDir string, rollbackKeep int, log *LogWriter) error {
 	productionDir := filepath.Join(repoRoot, productName)
-	rollbackDir := filepath.Join(repoRoot, ".rollback")
 
 	// Preserve directories that are not part of the build output
 	if _, err := os.Stat(productionDir); err == nil {
@@ -35,14 +35,27 @@ func StagePublish(ctx context.Context, repoRoot, productName, stagingDir string,
 	// Backup existing production if it exists
 	if _, err := os.Stat(productionDir); err == nil {
 		timestamp := time.Now().Format("20060102-150405")
-		backupDir := filepath.Join(rollbackDir, timestamp, productName)
-		if err := os.MkdirAll(filepath.Dir(backupDir), 0755); err != nil {
-			return fmt.Errorf("create backup dir: %w", err)
+
+		// Move existing .rollback dir to staging so it survives the swap
+		oldRollback := filepath.Join(productionDir, ".rollback")
+		stagingRollback := filepath.Join(stagingDir, ".rollback")
+		if info, statErr := os.Stat(oldRollback); statErr == nil && info.IsDir() {
+			if err := os.Rename(oldRollback, stagingRollback); err != nil {
+				log.WriteLog("Warning: failed to preserve rollback history: %v", err)
+			}
+		}
+		os.MkdirAll(stagingRollback, 0755)
+
+		// Create backup snapshot: copy production (minus .rollback) into staging/.rollback/<timestamp>
+		backupDir := filepath.Join(stagingRollback, timestamp)
+		log.WriteLog("Backing up %s to .rollback/%s", productionDir, timestamp)
+		if err := copyDirExcluding(productionDir, backupDir, ".rollback"); err != nil {
+			log.WriteLog("Warning: backup failed: %v", err)
 		}
 
-		log.WriteLog("Backing up %s to %s", productionDir, backupDir)
-		if err := os.Rename(productionDir, backupDir); err != nil {
-			return fmt.Errorf("backup production dir: %w", err)
+		// Remove old production dir to make way for atomic swap
+		if err := os.RemoveAll(productionDir); err != nil {
+			return fmt.Errorf("remove old production dir: %w", err)
 		}
 	}
 
@@ -55,8 +68,14 @@ func StagePublish(ctx context.Context, repoRoot, productName, stagingDir string,
 		return fmt.Errorf("atomic publish: %w", err)
 	}
 
-	// Clean old backups (keep latest 3)
-	cleanOldBackups(rollbackDir, 3, log)
+	// Clean old backups (keep latest N)
+	if rollbackKeep <= 0 {
+		rollbackKeep = 3
+	}
+	cleanOldBackups(filepath.Join(productionDir, ".rollback"), rollbackKeep, log)
+
+	// Clean old repo-rpm files (keep only the latest per name prefix)
+	cleanOldRepoRPMs(filepath.Join(productionDir, "repo-rpm"), log)
 
 	log.WriteLog("Published successfully")
 	return nil
@@ -86,6 +105,74 @@ func cleanOldBackups(rollbackDir string, keep int, log *LogWriter) {
 		log.WriteLog("Removing old backup: %s", d)
 		os.RemoveAll(path)
 	}
+}
+
+// cleanOldRepoRPMs removes old repo RPM files, keeping only the latest 3.
+func cleanOldRepoRPMs(dir string, log *LogWriter) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+
+	type rpmFile struct {
+		name    string
+		modTime int64
+	}
+
+	var rpms []rpmFile
+	for _, e := range entries {
+		if e.IsDir() || filepath.Ext(e.Name()) != ".rpm" {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		rpms = append(rpms, rpmFile{name: e.Name(), modTime: info.ModTime().UnixNano()})
+	}
+
+	if len(rpms) <= 3 {
+		return
+	}
+
+	// Sort by mod time ascending (oldest first)
+	sort.Slice(rpms, func(i, j int) bool {
+		return rpms[i].modTime < rpms[j].modTime
+	})
+
+	// Remove all but the latest 3
+	for _, f := range rpms[:len(rpms)-3] {
+		path := filepath.Join(dir, f.name)
+		log.WriteLog("Removing old repo RPM: %s", f.name)
+		os.Remove(path)
+	}
+}
+
+// copyDirExcluding recursively copies a directory tree, excluding a named subdirectory.
+func copyDirExcluding(src, dst, exclude string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath, _ := filepath.Rel(src, path)
+		if relPath == exclude || strings.HasPrefix(relPath, exclude+string(filepath.Separator)) {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		targetPath := filepath.Join(dst, relPath)
+
+		if info.IsDir() {
+			return os.MkdirAll(targetPath, info.Mode())
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(targetPath, data, info.Mode())
+	})
 }
 
 // copyDir recursively copies a directory tree.

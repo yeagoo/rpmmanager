@@ -23,7 +23,7 @@ type GPGKey struct {
 type GenerateKeyRequest struct {
 	Name      string `json:"name"`
 	Email     string `json:"email"`
-	Algorithm string `json:"algorithm"` // RSA or EDDSA
+	Algorithm string `json:"algorithm"`  // RSA or EDDSA
 	KeyLength int    `json:"key_length"` // 2048, 3072, 4096 for RSA
 	Expire    string `json:"expire"`     // "0" = never, "1y", "2y", etc.
 }

@@ -35,6 +35,7 @@ services:
       - "443:443/udp"    # HTTP/3
     volumes:
       - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../caddy/browse.html:/etc/caddy/browse.html:ro
       - rpmmanager-data:/rpmdata:ro     # Read-only access to repos
       - caddy-data:/data                # Caddy certificates & state
       - caddy-config:/config            # Caddy runtime config

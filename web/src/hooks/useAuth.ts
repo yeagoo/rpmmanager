@@ -23,7 +23,7 @@ export function useAuth() {
 
 export function useAuthProvider(): AuthContextType {
   const [username, setUsername] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => !!apiClient.getToken());
 
   useEffect(() => {
     const token = apiClient.getToken();
@@ -35,8 +35,6 @@ export function useAuthProvider(): AuthContextType {
           setUsername(null);
         })
         .finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
     }
 
     // Listen for 401 events from apiClient

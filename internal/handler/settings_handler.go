@@ -25,10 +25,17 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 
 // allowedSettingKeys defines which setting keys can be modified via the API.
 var allowedSettingKeys = map[string]bool{
-	"github_token":    true,
-	"monitor_enabled": true,
-	"monitor_interval": true,
-	"notification_url": true,
+	"site_name":             true,
+	"base_url":              true,
+	"repo_base_url":         true,
+	"github_token":          true,
+	"max_concurrent_builds": true,
+	"build_timeout":         true,
+	"rollback_keep_count":   true,
+	"monitor_enabled":       true,
+	"monitor_interval":      true,
+	"notification_url":      true,
+	"notification_events":   true,
 }
 
 func (h *SettingsHandler) Update(w http.ResponseWriter, r *http.Request) {

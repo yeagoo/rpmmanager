@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsApi } from '@/api/settings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,36 +13,38 @@ interface SettingField {
   key: string;
   label: string;
   description: string;
-  type?: 'text' | 'url' | 'number';
+  type?: 'text' | 'url' | 'number' | 'password';
+  section: 'general' | 'notification';
 }
 
 const settingFields: SettingField[] = [
-  { key: 'site_name', label: 'Site Name', description: 'Display name for this RPM Manager instance' },
-  { key: 'base_url', label: 'Base URL', description: 'Public URL for repository access', type: 'url' },
-  { key: 'repo_base_url', label: 'Repository Base URL', description: 'Base URL used in .repo file generation', type: 'url' },
-  { key: 'github_token', label: 'GitHub Token', description: 'Token for GitHub API (version monitoring, release downloads)' },
-  { key: 'max_concurrent_builds', label: 'Max Concurrent Builds', description: 'Maximum number of builds running at the same time', type: 'number' },
-  { key: 'build_timeout', label: 'Build Timeout (seconds)', description: 'Maximum time allowed for a single build', type: 'number' },
+  { key: 'site_name', label: 'Site Name', description: 'Display name for this RPM Manager instance', section: 'general' },
+  { key: 'base_url', label: 'Base URL', description: 'Public URL for repository access', type: 'url', section: 'general' },
+  { key: 'repo_base_url', label: 'Repository Base URL', description: 'Base URL used in .repo file generation', type: 'url', section: 'general' },
+  { key: 'github_token', label: 'GitHub Token', description: 'Token for GitHub API (version monitoring, release downloads)', type: 'password', section: 'general' },
+  { key: 'max_concurrent_builds', label: 'Max Concurrent Builds', description: 'Maximum number of builds running at the same time', type: 'number', section: 'general' },
+  { key: 'build_timeout', label: 'Build Timeout (seconds)', description: 'Maximum time allowed for a single build', type: 'number', section: 'general' },
+  { key: 'rollback_keep_count', label: 'Rollback Keep Count', description: 'Number of rollback snapshots to keep (default: 3)', type: 'number', section: 'general' },
+  { key: 'notification_url', label: 'Webhook URL', description: 'URL for build notifications (supports Telegram Bot, WeChat Work, DingTalk, or generic webhook)', type: 'url', section: 'notification' },
+  { key: 'notification_events', label: 'Notification Events', description: 'Comma-separated events to notify on (default: build.success,build.failed)', section: 'notification' },
 ];
 
 export default function SettingsPage() {
-  const queryClient = useQueryClient();
-  const [form, setForm] = useState<Record<string, string>>({});
-
   const { data: settings, isLoading } = useQuery({
     queryKey: ['settings'],
     queryFn: settingsApi.getAll,
   });
 
-  const [initialized, setInitialized] = useState(false);
+  if (isLoading) {
+    return <p className="text-muted-foreground">Loading...</p>;
+  }
 
-  useEffect(() => {
-    // Only set form from server data on first load, not on refetch
-    if (settings && !initialized) {
-      setForm({ ...settings });
-      setInitialized(true);
-    }
-  }, [settings, initialized]);
+  return <SettingsForm initialValues={settings || {}} />;
+}
+
+function SettingsForm({ initialValues }: { initialValues: Record<string, string> }) {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState<Record<string, string>>(initialValues);
 
   const saveMutation = useMutation({
     mutationFn: settingsApi.update,
@@ -58,7 +60,7 @@ export default function SettingsPage() {
     const changes: Record<string, string> = {};
     for (const field of settingFields) {
       const newVal = form[field.key] || '';
-      const oldVal = settings?.[field.key] || '';
+      const oldVal = initialValues[field.key] || '';
       if (newVal !== oldVal) {
         changes[field.key] = newVal;
       }
@@ -70,10 +72,6 @@ export default function SettingsPage() {
     saveMutation.mutate(changes);
   };
 
-  if (isLoading) {
-    return <p className="text-muted-foreground">Loading...</p>;
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -84,30 +82,40 @@ export default function SettingsPage() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>General</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {settingFields.map((field, i) => (
-            <div key={field.key}>
-              {i > 0 && <Separator className="mb-6" />}
-              <div className="space-y-2">
-                <Label htmlFor={field.key}>{field.label}</Label>
-                <Input
-                  id={field.key}
-                  type={field.key === 'github_token' ? 'password' : (field.type || 'text')}
-                  value={form[field.key] || ''}
-                  onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  placeholder={field.description}
-                  autoComplete={field.key === 'github_token' ? 'off' : undefined}
-                />
-                <p className="text-xs text-muted-foreground">{field.description}</p>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      {(['general', 'notification'] as const).map((section) => {
+        const fields = settingFields.filter((f) => f.section === section);
+        const title = section === 'general' ? 'General' : 'Build Notifications';
+        const desc = section === 'notification'
+          ? 'Configure webhook notifications for build events. Supports Telegram Bot, WeChat Work, DingTalk, and generic webhooks.'
+          : undefined;
+        return (
+          <Card key={section}>
+            <CardHeader>
+              <CardTitle>{title}</CardTitle>
+              {desc && <p className="text-sm text-muted-foreground">{desc}</p>}
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {fields.map((field, i) => (
+                <div key={field.key}>
+                  {i > 0 && <Separator className="mb-6" />}
+                  <div className="space-y-2">
+                    <Label htmlFor={field.key}>{field.label}</Label>
+                    <Input
+                      id={field.key}
+                      type={field.type === 'password' ? 'password' : (field.type || 'text')}
+                      value={form[field.key] || ''}
+                      onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      placeholder={field.description}
+                      autoComplete={field.type === 'password' ? 'off' : undefined}
+                    />
+                    <p className="text-xs text-muted-foreground">{field.description}</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }

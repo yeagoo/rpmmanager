@@ -102,8 +102,8 @@ export default function MonitorsPage() {
         <Card>
           <CardContent className="p-8 text-center">
             <p className="text-muted-foreground">
-              No monitors configured. Monitors are automatically created for products with GitHub sources.
-              Create a product first, then configure monitoring here.
+              No monitors configured. Monitors are automatically created when you create a product with a GitHub source.
+              Create a GitHub-sourced product to get started.
             </p>
           </CardContent>
         </Card>

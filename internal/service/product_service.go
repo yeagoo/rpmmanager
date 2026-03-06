@@ -11,11 +11,12 @@ import (
 var nameRegex = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*[a-z0-9]$`)
 
 type ProductService struct {
-	repo *repository.ProductRepo
+	repo        *repository.ProductRepo
+	monitorRepo *repository.MonitorRepo
 }
 
-func NewProductService(repo *repository.ProductRepo) *ProductService {
-	return &ProductService{repo: repo}
+func NewProductService(repo *repository.ProductRepo, monitorRepo *repository.MonitorRepo) *ProductService {
+	return &ProductService{repo: repo, monitorRepo: monitorRepo}
 }
 
 func (s *ProductService) Create(p *models.Product) (int64, error) {
@@ -32,7 +33,17 @@ func (s *ProductService) Create(p *models.Product) (int64, error) {
 		p.Architectures = []string{"x86_64", "aarch64"}
 	}
 	p.Enabled = true
-	return s.repo.Create(p)
+	id, err := s.repo.Create(p)
+	if err != nil {
+		return 0, err
+	}
+
+	// Auto-create monitor for GitHub source products
+	if s.monitorRepo != nil && p.SourceType == "github" {
+		s.monitorRepo.Upsert(id)
+	}
+
+	return id, nil
 }
 
 func (s *ProductService) GetByID(id int64) (*models.Product, error) {

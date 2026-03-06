@@ -17,8 +17,10 @@
 rpms.example.com {
 	root * /rpmdata/repos
 
+	templates
+
 	file_server {
-		browse
+		browse /etc/caddy/browse.html
 	}
 
 	# ── Hide internal directories ────────��─────────────────────

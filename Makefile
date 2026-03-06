@@ -1,7 +1,9 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS := -s -w -X main.version=$(VERSION)
+COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT)
 
-.PHONY: dev dev-backend dev-frontend build build-backend test clean release dist
+.PHONY: dev dev-backend dev-frontend build build-backend web-build \
+        test lint fmt check release docker docker-up docker-down clean
 
 # ── Development ──────────────────────────────────────────────────
 dev:
@@ -33,13 +35,28 @@ build-backend:
 web-build:
 	cd web && npm ci && npm run build
 
-# ── Test ─────────────────────────────────────────────────────────
+# ── Test & Lint ──────────────────────────────────────────────────
+
+# Run all checks (same as CI)
+check: fmt test lint web-typecheck
+	@echo "All checks passed."
+
+# Go tests
 test:
 	go vet ./...
 	go test -race -count=1 ./...
 
+# Frontend lint
 lint:
 	cd web && npm run lint
+
+# Frontend type check
+web-typecheck:
+	cd web && npx tsc --noEmit
+
+# Go format check (fails if unformatted)
+fmt:
+	@test -z "$$(gofmt -l .)" || (echo "Run 'gofmt -w .' to fix formatting:" && gofmt -l . && exit 1)
 
 # ── Release (cross-compile) ─────────────────────────────────────
 
@@ -60,8 +77,19 @@ release: web-build
 
 # ── Docker ───────────────────────────────────────────────────────
 docker:
-	docker build -f deploy/docker/Dockerfile -t rpmmanager:$(VERSION) .
+	docker build -f deploy/docker/Dockerfile \
+		--build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) \
+		-t rpmmanager:$(VERSION) .
 	@echo "Built docker image rpmmanager:$(VERSION)"
+
+docker-up:
+	cd deploy/docker && docker compose up -d
+
+docker-down:
+	cd deploy/docker && docker compose down
+
+docker-logs:
+	cd deploy/docker && docker compose logs -f
 
 # ── Clean ────────────────────────────────────────────────────────
 clean:

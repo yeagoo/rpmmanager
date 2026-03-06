@@ -46,6 +46,12 @@ export interface RepoRPMResult {
   download_url: string;
 }
 
+export interface ImportResult {
+  imported: { id: number; name: string }[];
+  count: number;
+  errors?: string[];
+}
+
 export const productsApi = {
   list: () => apiClient.get<Product[]>('/products'),
   get: (id: number) => apiClient.get<Product>(`/products/${id}`),
@@ -57,4 +63,36 @@ export const productsApi = {
   generateRepoRPM: (id: number, data?: { distros?: string[]; version?: string }) =>
     apiClient.post<RepoRPMResult>(`/products/${id}/repo-rpm`, data),
   getRepoRPM: (id: number) => apiClient.get<RepoRPMResult>(`/products/${id}/repo-rpm`),
+  exportProduct: async (id: number) => {
+    const token = localStorage.getItem('token');
+    const resp = await fetch(`/api/products/${id}/export`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!resp.ok) throw new Error('Export failed');
+    const blob = await resp.blob();
+    const disposition = resp.headers.get('Content-Disposition');
+    const filename = disposition?.match(/filename=(.+)/)?.[1] || `product-${id}.json`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+  exportAll: async () => {
+    const token = localStorage.getItem('token');
+    const resp = await fetch('/api/products/export', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!resp.ok) throw new Error('Export failed');
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'products-export.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+  importProducts: (products: Partial<Product>[]) =>
+    apiClient.post<ImportResult>('/products/import', products),
 };

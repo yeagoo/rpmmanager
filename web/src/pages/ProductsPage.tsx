@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { productsApi, type Product } from '@/api/products';
@@ -15,14 +16,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreHorizontal, Copy, Trash2 } from 'lucide-react';
+import { Plus, MoreHorizontal, Copy, Trash2, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ProductsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['products'],
@@ -47,14 +50,82 @@ export default function ProductsPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const importMutation = useMutation({
+    mutationFn: productsApi.importProducts,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success(`Imported ${result.count} product(s)`);
+      if (result.errors?.length) {
+        result.errors.forEach((e) => toast.error(e));
+      }
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target?.result as string);
+        const products = Array.isArray(data) ? data : [data];
+        importMutation.mutate(products);
+      } catch {
+        toast.error('Invalid JSON file');
+      }
+    };
+    reader.readAsText(file);
+    // Reset so same file can be selected again
+    e.target.value = '';
+  };
+
+  const handleExportAll = async () => {
+    try {
+      await productsApi.exportAll();
+      toast.success('Products exported');
+    } catch {
+      toast.error('Export failed');
+    }
+  };
+
+  const handleExportOne = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await productsApi.exportProduct(id);
+    } catch {
+      toast.error('Export failed');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Products</h1>
-        <Button onClick={() => navigate('/products/new')}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Product
-        </Button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleImport}
+          />
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importMutation.isPending}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import
+          </Button>
+          {products && products.length > 0 && (
+            <Button variant="outline" onClick={handleExportAll}>
+              <Download className="mr-2 h-4 w-4" />
+              Export All
+            </Button>
+          )}
+          <Button onClick={() => navigate('/products/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Product
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -126,6 +197,11 @@ export default function ProductsPage() {
                         <Copy className="mr-2 h-4 w-4" />
                         Duplicate
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => handleExportOne(p.id, e)}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Export
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={(e) => {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
@@ -99,6 +100,7 @@ func Load(cfgFile string) (*Config, error) {
 	}
 
 	v.SetEnvPrefix("RPMMANAGER")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
 	if err := v.ReadInConfig(); err != nil {

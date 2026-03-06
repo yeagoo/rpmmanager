@@ -8,16 +8,26 @@ RUN npm run build
 
 # Stage 2: Build backend
 FROM golang:1.24-alpine AS backend
+
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 COPY --from=frontend /app/web/dist ./web/dist
 RUN rm -rf internal/embed/dist && cp -r web/dist internal/embed/dist
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o rpmmanager ./cmd/rpmmanager
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" \
+    -o rpmmanager ./cmd/rpmmanager
 
 # Stage 3: Runtime
 FROM almalinux:9-minimal
+
+ARG TARGETARCH=amd64
 
 RUN microdnf install -y \
     gnupg2 \
@@ -27,9 +37,12 @@ RUN microdnf install -y \
     tar \
     && microdnf clean all
 
-# Install nfpm
+# Install nfpm (supports amd64/arm64)
 ARG NFPM_VERSION=2.41.1
-RUN rpm -i "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_amd64.rpm" || \
+RUN NFPM_ARCH="${TARGETARCH}"; \
+    if [ "$NFPM_ARCH" = "amd64" ]; then NFPM_ARCH="x86_64"; fi; \
+    if [ "$NFPM_ARCH" = "arm64" ]; then NFPM_ARCH="aarch64"; fi; \
+    rpm -i "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_${NFPM_ARCH}.rpm" || \
     echo "WARNING: nfpm installation failed, builds will not work"
 
 COPY --from=backend /app/rpmmanager /usr/local/bin/rpmmanager

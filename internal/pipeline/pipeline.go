@@ -13,21 +13,25 @@ import (
 
 // Pipeline orchestrates the 4-stage build pipeline.
 type Pipeline struct {
-	cfg       *config.Config
-	buildRepo *repository.BuildRepo
-	product   *models.Product
-	build     *models.Build
-	log       *LogWriter
+	cfg               *config.Config
+	buildRepo         *repository.BuildRepo
+	product           *models.Product
+	build             *models.Build
+	log               *LogWriter
+	gpgFingerprint    string // GPG key fingerprint for signing (empty = skip signing)
+	rollbackKeepCount int    // number of rollback snapshots to keep (0 = default 3)
 }
 
 // New creates a new Pipeline.
-func New(cfg *config.Config, buildRepo *repository.BuildRepo, product *models.Product, build *models.Build, logWriter *LogWriter) *Pipeline {
+func New(cfg *config.Config, buildRepo *repository.BuildRepo, product *models.Product, build *models.Build, logWriter *LogWriter, gpgFingerprint string, rollbackKeepCount int) *Pipeline {
 	return &Pipeline{
-		cfg:       cfg,
-		buildRepo: buildRepo,
-		product:   product,
-		build:     build,
-		log:       logWriter,
+		cfg:               cfg,
+		buildRepo:         buildRepo,
+		product:           product,
+		build:             build,
+		log:               logWriter,
+		gpgFingerprint:    gpgFingerprint,
+		rollbackKeepCount: rollbackKeepCount,
 	}
 }
 
@@ -64,15 +68,14 @@ func (p *Pipeline) Run(ctx context.Context) error {
 			name:   "sign",
 			status: models.BuildStatusSigning,
 			fn: func() error {
-				gpgKeyID := "" // TODO: resolve from product's gpg_key_id
-				return StageSign(ctx, p.cfg, gpgKeyID, p.cfg.GPG.HomeDir, stagingDir, p.log)
+				return StageSign(ctx, p.cfg, p.gpgFingerprint, p.cfg.GPG.HomeDir, stagingDir, p.log)
 			},
 		},
 		{
 			name:   "publish",
 			status: models.BuildStatusPublishing,
 			fn: func() error {
-				return StagePublish(ctx, p.cfg.Storage.RepoRoot, p.product.Name, stagingDir, p.log)
+				return StagePublish(ctx, p.cfg.Storage.RepoRoot, p.product.Name, stagingDir, p.rollbackKeepCount, p.log)
 			},
 		},
 		{
@@ -80,8 +83,7 @@ func (p *Pipeline) Run(ctx context.Context) error {
 			status: models.BuildStatusVerifying,
 			fn: func() error {
 				productDir := filepath.Join(p.cfg.Storage.RepoRoot, p.product.Name)
-				gpgKeyID := "" // TODO: resolve from product's gpg_key_id
-				return StageVerify(ctx, p.cfg, productDir, gpgKeyID, p.log)
+				return StageVerify(ctx, p.cfg, productDir, p.gpgFingerprint, p.log)
 			},
 		},
 	}

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{html .Name}} - RPM Repository</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --fg: #1a1a2e;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --card-bg: #f9fafb;
+            --badge-bg: #dbeafe;
+            --badge-fg: #1e40af;
+            --code-bg: #f3f4f6;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --fg: #e2e8f0;
+                --muted: #94a3b8;
+                --border: #334155;
+                --primary: #60a5fa;
+                --primary-hover: #93bbfd;
+                --card-bg: #1e293b;
+                --badge-bg: #1e3a5f;
+                --badge-fg: #93c5fd;
+                --code-bg: #1e293b;
+            }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            line-height: 1.6;
+        }
+        .container { max-width: 960px; margin: 0 auto; padding: 2rem 1rem; }
+        header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        header h1 a { color: var(--primary); text-decoration: none; }
+        header h1 a:hover { color: var(--primary-hover); }
+        .breadcrumb {
+            font-size: 0.875rem;
+            color: var(--muted);
+        }
+        .breadcrumb a { color: var(--primary); text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .info-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem 1.25rem;
+        }
+        .card h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .card code {
+            display: block;
+            background: var(--code-bg);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.8125rem;
+            word-break: break-all;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            text-align: left;
+            padding: 0.625rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid var(--border);
+        }
+        td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+        }
+        tr:hover td { background: var(--card-bg); }
+        td a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        td a:hover { text-decoration: underline; }
+        .size { color: var(--muted); font-variant-numeric: tabular-nums; }
+        .date { color: var(--muted); font-size: 0.8125rem; }
+        .badge {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: var(--badge-bg);
+            color: var(--badge-fg);
+        }
+        .icon { margin-right: 0.375rem; }
+        footer {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.75rem;
+            color: var(--muted);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1><a href="/">RPM Repository</a></h1>
+        <div class="breadcrumb">
+            {{- $parts := split .Path "/" -}}
+            <a href="/">root</a>
+            {{- $path := "" -}}
+            {{- range $parts -}}
+                {{- if ne . "" -}}
+                    {{- $path = printf "%s/%s" $path . }}
+                    / <a href="{{$path}}/">{{.}}</a>
+                {{- end -}}
+            {{- end -}}
+        </div>
+    </header>
+
+    {{if eq .Path "/"}}
+    <div class="info-cards">
+        <div class="card">
+            <h3>Quick Install</h3>
+            <code>dnf install https://your-domain/&lt;product&gt;/repo-rpm/&lt;product&gt;-repo-1.0-1.noarch.rpm</code>
+        </div>
+        <div class="card">
+            <h3>GPG Public Key</h3>
+            <code>https://your-domain/&lt;product&gt;/gpg.key</code>
+        </div>
+    </div>
+    {{end}}
+
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Size</th>
+                <th>Modified</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{- if ne .Path "/" }}
+            <tr>
+                <td><a href="../">../</a></td>
+                <td></td>
+                <td></td>
+            </tr>
+            {{- end }}
+            {{- range .Items}}
+            <tr>
+                <td>
+                    <a href="{{.URL}}">
+                        {{- if .IsDir}}<span class="icon">&#128193;</span>{{else}}<span class="icon">&#128196;</span>{{end -}}
+                        {{.Name}}{{if .IsDir}}/{{end}}
+                    </a>
+                    {{- if hasSuffix .Name ".rpm"}} <span class="badge">RPM</span>{{end -}}
+                    {{- if eq .Name "gpg.key"}} <span class="badge">GPG</span>{{end -}}
+                    {{- if hasSuffix .Name ".repo"}} <span class="badge">REPO</span>{{end -}}
+                </td>
+                <td class="size">{{if not .IsDir}}{{.HumanSize}}{{end}}</td>
+                <td class="date">{{.HumanModTime "2006-01-02 15:04"}}</td>
+            </tr>
+            {{- end}}
+        </tbody>
+    </table>
+
+    <footer>
+        Powered by RPM Manager &middot; Served by Caddy
+    </footer>
+</div>
+</body>
+</html>

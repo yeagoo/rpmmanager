@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -16,22 +18,28 @@ import (
 )
 
 type BuildService struct {
-	cfg         *config.Config
-	buildRepo   *repository.BuildRepo
-	productRepo *repository.ProductRepo
-	mu          sync.Mutex
-	running     map[int64]context.CancelFunc // productID -> cancel function
-	logWriters  map[int64]*pipeline.LogWriter // buildID -> log writer
-	writerMu    sync.RWMutex
+	cfg             *config.Config
+	buildRepo       *repository.BuildRepo
+	productRepo     *repository.ProductRepo
+	gpgKeyRepo      *repository.GPGKeyRepo
+	settingsRepo    *repository.SettingsRepo
+	notificationSvc *NotificationService
+	mu              sync.Mutex
+	running         map[int64]context.CancelFunc  // productID -> cancel function
+	logWriters      map[int64]*pipeline.LogWriter // buildID -> log writer
+	writerMu        sync.RWMutex
 }
 
-func NewBuildService(cfg *config.Config, buildRepo *repository.BuildRepo, productRepo *repository.ProductRepo) *BuildService {
+func NewBuildService(cfg *config.Config, buildRepo *repository.BuildRepo, productRepo *repository.ProductRepo, gpgKeyRepo *repository.GPGKeyRepo, settingsRepo *repository.SettingsRepo, notificationSvc *NotificationService) *BuildService {
 	return &BuildService{
-		cfg:         cfg,
-		buildRepo:   buildRepo,
-		productRepo: productRepo,
-		running:     make(map[int64]context.CancelFunc),
-		logWriters:  make(map[int64]*pipeline.LogWriter),
+		cfg:             cfg,
+		buildRepo:       buildRepo,
+		productRepo:     productRepo,
+		gpgKeyRepo:      gpgKeyRepo,
+		settingsRepo:    settingsRepo,
+		notificationSvc: notificationSvc,
+		running:         make(map[int64]context.CancelFunc),
+		logWriters:      make(map[int64]*pipeline.LogWriter),
 	}
 }
 
@@ -92,6 +100,17 @@ func (s *BuildService) TriggerBuild(req *models.TriggerBuildRequest, triggerType
 	ctx, cancel := context.WithCancel(context.Background())
 	s.running[req.ProductID] = cancel
 
+	// Resolve GPG key fingerprint
+	var gpgFingerprint string
+	if product.GPGKeyID != nil {
+		gpgKey, gpgErr := s.gpgKeyRepo.GetByID(*product.GPGKeyID)
+		if gpgErr != nil {
+			log.Warn().Err(gpgErr).Int64("gpg_key_id", *product.GPGKeyID).Msg("Failed to resolve GPG key, builds will not be signed")
+		} else {
+			gpgFingerprint = gpgKey.Fingerprint
+		}
+	}
+
 	go func() {
 		defer func() {
 			s.mu.Lock()
@@ -105,9 +124,49 @@ func (s *BuildService) TriggerBuild(req *models.TriggerBuildRequest, triggerType
 			logWriter.Close()
 		}()
 
-		p := pipeline.New(s.cfg, s.buildRepo, product, build, logWriter)
-		if err := p.Run(ctx); err != nil {
-			log.Error().Err(err).Int64("build_id", buildID).Msg("Build failed")
+		startTime := time.Now()
+		rollbackKeep := 3
+		if s.settingsRepo != nil {
+			if v, err := s.settingsRepo.Get("rollback_keep_count"); err == nil && v != "" {
+				if n, err := strconv.Atoi(v); err == nil && n > 0 {
+					rollbackKeep = n
+				}
+			}
+		}
+		p := pipeline.New(s.cfg, s.buildRepo, product, build, logWriter, gpgFingerprint, rollbackKeep)
+		runErr := p.Run(ctx)
+		duration := time.Since(startTime)
+
+		cancelled := ctx.Err() != nil
+		if runErr != nil && !cancelled {
+			log.Error().Err(runErr).Int64("build_id", buildID).Msg("Build failed")
+		}
+
+		// Send notification (skip for cancelled builds)
+		if s.notificationSvc != nil && !cancelled {
+			event := "build.success"
+			status := "success"
+			errMsg := ""
+			if runErr != nil {
+				event = "build.failed"
+				status = "failed"
+				errMsg = runErr.Error()
+			}
+			// Fetch updated build to get RPM count
+			updatedBuild, _ := s.buildRepo.GetByID(buildID)
+			rpmCount := 0
+			if updatedBuild != nil {
+				rpmCount = updatedBuild.RPMCount
+			}
+			s.notificationSvc.NotifyBuildComplete(&BuildNotification{
+				Event:       event,
+				ProductName: product.Name,
+				Version:     build.Version,
+				Status:      status,
+				RPMCount:    rpmCount,
+				Duration:    duration.Round(time.Second).String(),
+				Error:       errMsg,
+			})
 		}
 	}()
 

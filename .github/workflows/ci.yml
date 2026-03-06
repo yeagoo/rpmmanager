@@ -22,6 +22,9 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Go format check
+        run: test -z "$(gofmt -l .)" || (echo "Unformatted files:" && gofmt -l . && exit 1)
+
       - name: Go mod verify
         run: go mod verify
 
@@ -29,10 +32,14 @@ jobs:
         run: go vet ./...
 
       - name: Go build
-        run: CGO_ENABLED=0 go build -ldflags="-s -w" -o /dev/null ./cmd/rpmmanager
+        run: |
+          VERSION="${GITHUB_SHA::8}"
+          CGO_ENABLED=0 go build \
+            -ldflags="-s -w -X main.version=ci-${VERSION} -X main.commit=${VERSION}" \
+            -o /dev/null ./cmd/rpmmanager
 
       - name: Go test
-        run: go test -race -count=1 ./...
+        run: go test -race -count=1 -timeout=5m ./...
 
   # ── Frontend checks ─────────────────────────────────────────────
   frontend:
@@ -57,10 +64,17 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Lint
-        run: npm run lint || true
+        run: npm run lint
 
       - name: Build
         run: npm run build
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: web/dist
+          retention-days: 1
 
   # ── Full production build (frontend → embed → Go binary) ───────
   build:
@@ -75,15 +89,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - uses: actions/setup-node@v4
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-
-      - name: Build frontend
-        working-directory: web
-        run: npm ci && npm run build
+          name: frontend-dist
+          path: web/dist
 
       - name: Embed frontend
         run: |
@@ -91,7 +101,11 @@ jobs:
           cp -r web/dist internal/embed/dist
 
       - name: Build binary
-        run: CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/rpmmanager ./cmd/rpmmanager
+        run: |
+          VERSION="${GITHUB_SHA::8}"
+          CGO_ENABLED=0 go build \
+            -ldflags="-s -w -X main.version=ci-${VERSION} -X main.commit=${VERSION}" \
+            -o bin/rpmmanager ./cmd/rpmmanager
 
       - name: Verify binary
         run: ./bin/rpmmanager version || true
@@ -121,5 +135,8 @@ jobs:
           file: deploy/docker/Dockerfile
           push: false
           tags: rpmmanager:ci-${{ github.sha }}
+          build-args: |
+            VERSION=ci-${{ github.sha }}
+            COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

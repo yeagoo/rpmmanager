@@ -25,14 +25,14 @@ var defaultDistroMap = map[string]string{
 	"kylin:v10": "el8",
 
 	// EL9 family
-	"rhel:9":     "el9",
-	"centos:9":   "el9",
-	"alma:9":     "el9",
-	"rocky:9":    "el9",
-	"oracle:9":   "el9",
-	"anolis:23":  "el9",
-	"alinux:3":   "el9",
-	"kylin:v11":  "el9",
+	"rhel:9":    "el9",
+	"centos:9":  "el9",
+	"alma:9":    "el9",
+	"rocky:9":   "el9",
+	"oracle:9":  "el9",
+	"anolis:23": "el9",
+	"alinux:3":  "el9",
+	"kylin:v11": "el9",
 
 	// EL10 family
 	"rhel:10":   "el10",

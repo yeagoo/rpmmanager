@@ -8,11 +8,6 @@ export function useBuildLogWebSocket(buildId: number | null) {
   const [connected, setConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
-  // Reset lines when buildId changes
-  useEffect(() => {
-    setLines([]);
-  }, [buildId]);
-
   useEffect(() => {
     if (!buildId) return;
 
@@ -47,6 +42,7 @@ export function useBuildLogWebSocket(buildId: number | null) {
     return () => {
       ws.close();
       wsRef.current = null;
+      setLines([]);
     };
   }, [buildId]);
 
