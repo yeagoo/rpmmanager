@@ -74,6 +74,9 @@ func NewRouter(deps *Deps) *RouterResult {
 	// Start background monitor
 	monitorSvc.Start()
 
+	// Repo RPM service
+	repoRPMSvc := service.NewRepoRPMService(deps.Config, gpgSvc)
+
 	// Handlers
 	authHandler := NewAuthHandler(deps.AuthService)
 	productHandler := NewProductHandler(productSvc)
@@ -81,6 +84,7 @@ func NewRouter(deps *Deps) *RouterResult {
 	wsHandler := NewWSHandler(deps.Config, buildSvc, deps.AuthService)
 	gpgHandler := NewGPGHandler(gpgSvc)
 	repoHandler := NewRepoHandler(repoSvc)
+	repoRPMHandler := NewRepoRPMHandler(deps.Config, repoRPMSvc, productSvc)
 	dashboardHandler := NewDashboardHandler(deps.DB)
 	settingsHandler := NewSettingsHandler(settingsRepo)
 	monitorHandler := NewMonitorHandler(monitorSvc)
@@ -93,6 +97,9 @@ func NewRouter(deps *Deps) *RouterResult {
 			w.Write([]byte(`{"status":"ok"}`))
 		})
 		r.Post("/api/auth/login", authHandler.Login)
+
+		// Public repo RPM download
+		r.Get("/repos/{product}/repo-rpm/{filename}", repoRPMHandler.PublicDownload)
 	})
 
 	// Protected API routes
@@ -109,6 +116,9 @@ func NewRouter(deps *Deps) *RouterResult {
 		r.Put("/api/products/{id}", productHandler.Update)
 		r.Delete("/api/products/{id}", productHandler.Delete)
 		r.Post("/api/products/{id}/duplicate", productHandler.Duplicate)
+		r.Post("/api/products/{id}/repo-rpm", repoRPMHandler.Generate)
+		r.Get("/api/products/{id}/repo-rpm", repoRPMHandler.GetLatest)
+		r.Get("/api/products/{id}/repo-rpm/download", repoRPMHandler.Download)
 
 		// Distro metadata (for UI)
 		r.Get("/api/distros", productHandler.GetDistros)

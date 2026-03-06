@@ -39,6 +39,13 @@ export interface DistroInfo {
   all_distros: string[];
 }
 
+export interface RepoRPMResult {
+  filename: string;
+  file_path: string;
+  size: number;
+  download_url: string;
+}
+
 export const productsApi = {
   list: () => apiClient.get<Product[]>('/products'),
   get: (id: number) => apiClient.get<Product>(`/products/${id}`),
@@ -47,4 +54,7 @@ export const productsApi = {
   delete: (id: number) => apiClient.delete(`/products/${id}`),
   duplicate: (id: number) => apiClient.post<Product>(`/products/${id}/duplicate`),
   getDistros: () => apiClient.get<DistroInfo>('/distros'),
+  generateRepoRPM: (id: number, data?: { distros?: string[]; version?: string }) =>
+    apiClient.post<RepoRPMResult>(`/products/${id}/repo-rpm`, data),
+  getRepoRPM: (id: number) => apiClient.get<RepoRPMResult>(`/products/${id}/repo-rpm`),
 };

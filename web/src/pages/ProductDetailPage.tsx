@@ -1,16 +1,20 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi, type Product } from '@/api/products';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import ProductForm from '@/components/products/ProductForm';
+import RepoRPMTab from '@/components/products/RepoRPMTab';
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isNew = id === 'new';
+  const [activeTab, setActiveTab] = useState('settings');
 
   const { data: product, isLoading } = useQuery({
     queryKey: ['product', id],
@@ -62,11 +66,31 @@ export default function ProductDetailPage() {
         </h1>
       </div>
 
-      <ProductForm
-        initialData={isNew ? undefined : product}
-        onSubmit={handleSubmit}
-        loading={createMutation.isPending || updateMutation.isPending}
-      />
+      {isNew ? (
+        <ProductForm
+          onSubmit={handleSubmit}
+          loading={createMutation.isPending}
+        />
+      ) : (
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="settings">Product Settings</TabsTrigger>
+            <TabsTrigger value="repo-rpm">Repo RPM</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="settings" className="mt-4">
+            <ProductForm
+              initialData={product}
+              onSubmit={handleSubmit}
+              loading={updateMutation.isPending}
+            />
+          </TabsContent>
+
+          <TabsContent value="repo-rpm" className="mt-4">
+            {product && <RepoRPMTab product={product} />}
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }
