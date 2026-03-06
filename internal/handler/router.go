@@ -78,8 +78,12 @@ func NewRouter(deps *Deps) *RouterResult {
 	// Repo RPM service
 	repoRPMSvc := service.NewRepoRPMService(deps.Config, gpgSvc)
 
+	// Auth PoW services
+	challengeSvc := auth.NewChallengeService(deps.Config.Auth.HMACKey)
+	rateLimiter := auth.NewRateLimiter()
+
 	// Handlers
-	authHandler := NewAuthHandler(deps.AuthService)
+	authHandler := NewAuthHandler(deps.AuthService, challengeSvc, rateLimiter)
 	productHandler := NewProductHandler(productSvc)
 	buildHandler := NewBuildHandler(deps.Config, buildSvc)
 	wsHandler := NewWSHandler(deps.Config, buildSvc, deps.AuthService)
@@ -97,6 +101,7 @@ func NewRouter(deps *Deps) *RouterResult {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`{"status":"ok"}`))
 		})
+		r.Get("/api/auth/challenge", authHandler.Challenge)
 		r.Post("/api/auth/login", authHandler.Login)
 
 		// Public repo RPM download (matches Caddy file path: /{product}/repo-rpm/{filename})

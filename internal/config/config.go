@@ -33,6 +33,7 @@ type AuthConfig struct {
 	PasswordHash string `mapstructure:"password_hash"`
 	APIToken     string `mapstructure:"api_token"`
 	JWTSecret    string `mapstructure:"jwt_secret"`
+	HMACKey      string `mapstructure:"hmac_key"`
 }
 
 type DatabaseConfig struct {
@@ -152,6 +153,11 @@ func (c *Config) ensureDefaults() error {
 		fmt.Fprintf(os.Stderr, "  Username: %s\n", c.Auth.Username)
 		fmt.Fprintf(os.Stderr, "  Please save this password!\n")
 		fmt.Fprintf(os.Stderr, "========================================\n\n")
+	}
+
+	// HMAC key for PoW challenge signing — fallback to JWT secret
+	if c.Auth.HMACKey == "" {
+		c.Auth.HMACKey = c.Auth.JWTSecret
 	}
 
 	// Generate API token if empty

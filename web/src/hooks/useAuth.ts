@@ -5,7 +5,7 @@ interface AuthContextType {
   username: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, altcha: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -45,10 +45,11 @@ export function useAuthProvider(): AuthContextType {
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, []);
 
-  const login = useCallback(async (user: string, password: string) => {
+  const login = useCallback(async (user: string, password: string, altcha: string) => {
     const data = await apiClient.post<{ token: string; username: string }>('/auth/login', {
       username: user,
       password,
+      altcha,
     });
     apiClient.setToken(data.token);
     setUsername(data.username);

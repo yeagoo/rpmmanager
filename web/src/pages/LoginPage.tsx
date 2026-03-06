@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import PowCaptcha from '@/components/pow/PowCaptcha';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -13,15 +14,26 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [altchaPayload, setAltchaPayload] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
+
+  const handleSolved = useCallback((payload: string) => {
+    setAltchaPayload(payload);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!altchaPayload) return;
+
     setLoading(true);
     try {
-      await login(username, password);
+      await login(username, password, altchaPayload);
       navigate('/');
     } catch {
       toast.error('Login failed. Check your credentials.');
+      // Reset captcha for a fresh challenge
+      setAltchaPayload(null);
+      setCaptchaKey(k => k + 1);
     } finally {
       setLoading(false);
     }
@@ -57,7 +69,8 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <PowCaptcha key={captchaKey} onSolved={handleSolved} />
+            <Button type="submit" className="w-full" disabled={loading || !altchaPayload}>
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>

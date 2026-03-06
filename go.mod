@@ -17,6 +17,7 @@ require (
 )
 
 require (
+	github.com/altcha-org/altcha-lib-go v1.0.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
