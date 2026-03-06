@@ -260,6 +260,60 @@ CSVC
     ok "Caddy binary installed"
 }
 
+# ── Configure firewall ───────────────────────────────────────────
+configure_firewall() {
+    local admin_port="$1"
+    echo ""
+
+    if command -v firewall-cmd &>/dev/null; then
+        info "Configuring firewalld..."
+        firewall-cmd --permanent --add-service=http --add-service=https &>/dev/null || true
+        firewall-cmd --permanent --add-port="${admin_port}/tcp" &>/dev/null || true
+        firewall-cmd --reload &>/dev/null || true
+        ok "Firewall ports opened: 80, 443, ${admin_port}"
+    elif command -v ufw &>/dev/null; then
+        info "Configuring ufw..."
+        ufw allow 80/tcp &>/dev/null || true
+        ufw allow 443/tcp &>/dev/null || true
+        ufw allow "${admin_port}/tcp" &>/dev/null || true
+        ok "Firewall ports opened: 80, 443, ${admin_port}"
+    elif command -v iptables &>/dev/null && iptables -L INPUT -n &>/dev/null 2>&1; then
+        info "No firewalld/ufw detected. If you have a firewall, open these ports manually:"
+        echo "    80, 443    — Public repo (Caddy auto-HTTPS)"
+        echo "    ${admin_port}       — Admin panel"
+    else
+        info "No firewall detected, skipping"
+    fi
+}
+
+# ── Verify Caddy TLS certificates ───────────────────────────────
+verify_caddy_tls() {
+    local url="$1"
+    local max_attempts=3
+    local wait_secs=5
+
+    echo ""
+    info "Verifying TLS certificate for ${url} ..."
+    sleep "${wait_secs}"
+
+    for attempt in $(seq 1 "$max_attempts"); do
+        if curl -sf --connect-timeout 5 --max-time 10 -o /dev/null "${url}" 2>/dev/null; then
+            ok "TLS certificate verified"
+            return 0
+        fi
+        if [[ "$attempt" -lt "$max_attempts" ]]; then
+            warn "Attempt ${attempt}/${max_attempts} failed, restarting Caddy and retrying..."
+            systemctl restart caddy
+            sleep "${wait_secs}"
+        fi
+    done
+
+    warn "TLS certificate not ready yet. This may be a transient ACME issue."
+    info "Try manually: systemctl restart caddy"
+    info "Check logs:   journalctl -u caddy | grep -i cert"
+    return 0
+}
+
 # ── Configure Caddy (two-domain architecture) ────────────────────
 configure_caddy() {
     local repo_domain="$1"
@@ -568,16 +622,8 @@ EOF
             ok "  repo_base_url: ${repo_url}"
         fi
 
-        # Firewall hint
-        echo ""
-        info "Firewall: make sure these ports are open:"
-        echo "    80, 443  — Public repo (Caddy auto-HTTPS)"
-        echo "    ${ADMIN_PORT}      — Admin panel"
-        echo ""
-        echo "  Example (firewalld):"
-        echo "    firewall-cmd --permanent --add-port={80,443,${ADMIN_PORT}}/tcp"
-        echo "    firewall-cmd --reload"
-        echo ""
+        # Firewall configuration
+        configure_firewall "$ADMIN_PORT"
 
         # Start services
         if ask "Start rpmmanager and Caddy now?"; then
@@ -586,6 +632,9 @@ EOF
 
             systemctl enable --now caddy
             ok "Caddy started"
+
+            # Verify TLS certificates
+            verify_caddy_tls "https://${ADMIN_DOMAIN}:${ADMIN_PORT}"
 
             echo ""
             info "Waiting for first-run password generation..."
