@@ -81,7 +81,7 @@ export default function ProductDetailPage() {
             <TabsTrigger value="repo-rpm">{t('repoRpm.title')}</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="settings" className="mt-4">
+          <TabsContent value="settings" forceMount className={activeTab === 'settings' ? 'mt-4' : 'hidden'}>
             <ProductForm
               initialData={product}
               onSubmit={handleSubmit}
@@ -89,7 +89,7 @@ export default function ProductDetailPage() {
             />
           </TabsContent>
 
-          <TabsContent value="repo-rpm" className="mt-4">
+          <TabsContent value="repo-rpm" forceMount className={activeTab === 'repo-rpm' ? 'mt-4' : 'hidden'}>
             {product && <RepoRPMTab product={product} />}
           </TabsContent>
         </Tabs>

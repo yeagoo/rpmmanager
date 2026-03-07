@@ -21,6 +21,8 @@ type Config struct {
 	Tools    ToolsConfig    `mapstructure:"tools"`
 	Monitor  MonitorConfig  `mapstructure:"monitor"`
 	Log      LogConfig      `mapstructure:"log"`
+
+	configFile string `mapstructure:"-"` // path to the config file (not serialized)
 }
 
 type ServerConfig struct {
@@ -115,6 +117,7 @@ func Load(cfgFile string) (*Config, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
+	cfg.configFile = v.ConfigFileUsed()
 
 	if err := cfg.ensureDefaults(); err != nil {
 		return nil, err
@@ -128,6 +131,8 @@ func Load(cfgFile string) (*Config, error) {
 }
 
 func (c *Config) ensureDefaults() error {
+	needsSave := false
+
 	// Generate JWT secret if empty
 	if c.Auth.JWTSecret == "" {
 		secret, err := randomHex(32)
@@ -135,6 +140,7 @@ func (c *Config) ensureDefaults() error {
 			return fmt.Errorf("generate jwt secret: %w", err)
 		}
 		c.Auth.JWTSecret = secret
+		needsSave = true
 	}
 
 	// Generate password and hash on first run
@@ -148,6 +154,7 @@ func (c *Config) ensureDefaults() error {
 			return fmt.Errorf("hash password: %w", err)
 		}
 		c.Auth.PasswordHash = string(hash)
+		needsSave = true
 		fmt.Fprintf(os.Stderr, "\n========================================\n")
 		fmt.Fprintf(os.Stderr, "  Generated admin password: %s\n", password)
 		fmt.Fprintf(os.Stderr, "  Username: %s\n", c.Auth.Username)
@@ -167,9 +174,70 @@ func (c *Config) ensureDefaults() error {
 			return fmt.Errorf("generate api token: %w", err)
 		}
 		c.Auth.APIToken = token
+		needsSave = true
+	}
+
+	// Persist generated secrets to config file so they survive restarts
+	if needsSave {
+		if err := c.persistAuthSecrets(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not save generated secrets to config file: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Secrets are valid for this session but will be regenerated on restart.\n")
+		}
 	}
 
 	return nil
+}
+
+// persistAuthSecrets writes generated auth secrets back to the config file.
+func (c *Config) persistAuthSecrets() error {
+	if c.configFile == "" {
+		return fmt.Errorf("no config file found")
+	}
+
+	data, err := os.ReadFile(c.configFile)
+	if err != nil {
+		return err
+	}
+	content := string(data)
+
+	// Helper to update or append a key under the auth: section
+	type kv struct {
+		key, value string
+	}
+	secrets := []kv{
+		{"password_hash", c.Auth.PasswordHash},
+		{"jwt_secret", c.Auth.JWTSecret},
+		{"api_token", c.Auth.APIToken},
+	}
+
+	for _, s := range secrets {
+		pattern := s.key + ":"
+		updated := false
+		lines := strings.Split(content, "\n")
+		for i, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, pattern) {
+				// Determine indentation from the existing line
+				indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+				lines[i] = fmt.Sprintf(`%s%s "%s"`, indent, pattern, s.value)
+				updated = true
+				break
+			}
+		}
+		if !updated {
+			// Find auth: section and append after it
+			for i, line := range lines {
+				if strings.TrimSpace(line) == "auth:" {
+					insert := fmt.Sprintf(`  %s "%s"`, pattern, s.value)
+					lines = append(lines[:i+2], append([]string{insert}, lines[i+2:]...)...)
+					break
+				}
+			}
+		}
+		content = strings.Join(lines, "\n")
+	}
+
+	return os.WriteFile(c.configFile, []byte(content), 0600)
 }
 
 func (c *Config) ensureDirectories() error {
