@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/ivmm/rpmmanager/internal/distromap"
@@ -93,7 +94,9 @@ func GenerateNfpmYAML(
 			item["type"] = c.Type
 		}
 		if c.Mode != "" {
-			item["file_info"] = map[string]string{"mode": c.Mode}
+			if mode, err := strconv.ParseUint(c.Mode, 8, 32); err == nil {
+				item["file_info"] = map[string]interface{}{"mode": mode}
+			}
 		}
 		contents = append(contents, item)
 	}

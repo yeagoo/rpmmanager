@@ -1,0 +1,32 @@
+[
+  {
+    "name": "caddy",
+    "display_name": "Caddy",
+    "description": "Fast and extensible multi-platform HTTP/1-2-3 web server with automatic HTTPS",
+    "source_type": "url",
+    "source_url_template": "https://caddyserver.com/api/download?os=linux&arch={arch}&version=v{version}",
+    "nfpm_config": "{\"description\":\"Fast and extensible multi-platform HTTP/1-2-3 web server with automatic HTTPS\",\"contents\":[{\"src\":\"{{binary}}\",\"dst\":\"/usr/bin/caddy\",\"mode\":\"0755\"},{\"src\":\"{{systemd_service}}\",\"dst\":\"/usr/lib/systemd/system/caddy.service\"},{\"src\":\"{{default_config}}\",\"dst\":\"/etc/caddy/Caddyfile\",\"type\":\"config|noreplace\"},{\"dst\":\"/var/lib/caddy\",\"type\":\"dir\"},{\"dst\":\"/var/lib/caddy/.config\",\"type\":\"dir\"},{\"dst\":\"/var/lib/caddy/.config/caddy\",\"type\":\"dir\"},{\"dst\":\"/var/lib/caddy/.local\",\"type\":\"dir\"},{\"dst\":\"/var/lib/caddy/.local/share\",\"type\":\"dir\"},{\"dst\":\"/var/lib/caddy/.local/share/caddy\",\"type\":\"dir\"}],\"depends\":[\"shadow-utils\"],\"rpm_group\":\"System Environment/Daemons\"}",
+    "target_distros": [
+      "rhel:8", "centos:8", "alma:8", "rocky:8", "oracle:8", "anolis:8",
+      "rhel:9", "centos:9", "alma:9", "rocky:9", "oracle:9", "anolis:23", "alinux:3",
+      "rhel:10", "centos:10", "alma:10", "rocky:10",
+      "amzn:2023",
+      "fedora:42", "fedora:43",
+      "openeuler:22", "openeuler:24"
+    ],
+    "architectures": ["x86_64", "aarch64"],
+    "maintainer": "Caddy Web Server <contact@caddyserver.com>",
+    "vendor": "Light Code Labs",
+    "homepage": "https://caddyserver.com",
+    "license": "Apache-2.0",
+    "script_postinstall": "#!/bin/bash\n# Create caddy group and user if not exists\ngetent group caddy >/dev/null || groupadd --system caddy\ngetent passwd caddy >/dev/null || useradd --system \\\n    --gid caddy \\\n    --create-home \\\n    --home-dir /var/lib/caddy \\\n    --shell /usr/sbin/nologin \\\n    --comment \"Caddy web server\" caddy\n\n# Ensure directory ownership\nmkdir -p /etc/caddy\nmkdir -p /var/lib/caddy/.config/caddy\nmkdir -p /var/lib/caddy/.local/share/caddy\nchown -R caddy:caddy /var/lib/caddy\n\n# Reload systemd and enable service\nsystemctl daemon-reload\nsystemctl enable caddy.service 2>/dev/null || true\n\n# If this is an upgrade and the service was running, restart it\nif systemctl is-active --quiet caddy.service 2>/dev/null; then\n    systemctl restart caddy.service\nfi",
+    "script_preremove": "#!/bin/bash\n# Only run on uninstall (not upgrade)\nif [ \"$1\" = \"0\" ] || [ \"$1\" = \"remove\" ]; then\n    if systemctl is-active --quiet caddy.service 2>/dev/null; then\n        systemctl stop caddy.service\n    fi\n    systemctl disable caddy.service 2>/dev/null || true\nfi",
+    "systemd_service": "[Unit]\nDescription=Caddy\nDocumentation=https://caddyserver.com/docs/\nAfter=network.target network-online.target\nRequires=network-online.target\n\n[Service]\nType=notify\nUser=caddy\nGroup=caddy\nExecStart=/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile\nExecReload=/usr/bin/caddy reload --config /etc/caddy/Caddyfile --force\nTimeoutStopSec=5s\nLimitNOFILE=1048576\nLimitNPROC=512\nPrivateTmp=true\nProtectSystem=full\nAmbientCapabilities=CAP_NET_BIND_SERVICE\nReadWritePaths=/var/lib/caddy/.local/share/caddy\nReadWritePaths=/var/lib/caddy/.config/caddy\n\n[Install]\nWantedBy=multi-user.target",
+    "default_config": "# Caddyfile\n# https://caddyserver.com/docs/caddyfile\n#\n# The Caddyfile is an easy way to configure your Caddy web server.\n#\n# Unless the file starts with a global options block, the first\n# uncommented line is always the address of your site.\n\n:80 {\n\trespond \"Hello, world!\"\n}\n",
+    "default_config_path": "/etc/caddy/Caddyfile",
+    "base_url": "",
+    "sm2_enabled": false,
+    "enabled": true,
+    "extra_files": "[]"
+  }
+]
