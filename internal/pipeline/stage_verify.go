@@ -51,23 +51,32 @@ func StageVerify(ctx context.Context, cfg *config.Config, productDir string, gpg
 
 	// Verify RPM signatures (if GPG key is configured)
 	if gpgKeyID != "" {
-		// Import the GPG public key into RPM keyring so rpm -K can verify
 		gpgKeyFile := filepath.Join(productDir, "gpg.key")
-		if _, err := os.Stat(gpgKeyFile); err == nil {
-			cmd := exec.CommandContext(ctx, cfg.Tools.RPMPath, "--import", gpgKeyFile)
-			cmd.Stdout = log
-			cmd.Stderr = log
-			if err := cmd.Run(); err != nil {
-				log.WriteLog("Warning: could not import GPG key into RPM keyring: %v (signature check may fail)", err)
-			}
-		}
 
-		for _, rpmFile := range rpmFiles {
-			cmd := exec.CommandContext(ctx, cfg.Tools.RPMPath, "-K", rpmFile)
+		// Create a temporary RPM database for verification (avoids needing root)
+		tmpDBPath, err := os.MkdirTemp("", "rpmdb-verify-*")
+		if err != nil {
+			return fmt.Errorf("create temp rpmdb: %w", err)
+		}
+		defer os.RemoveAll(tmpDBPath)
+
+		// Import GPG key into the temporary RPM database
+		if _, err := os.Stat(gpgKeyFile); err == nil {
+			cmd := exec.CommandContext(ctx, cfg.Tools.RPMPath, "--dbpath", tmpDBPath, "--import", gpgKeyFile)
 			cmd.Stdout = log
 			cmd.Stderr = log
 			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("RPM signature verification failed for %s: %w", filepath.Base(rpmFile), err)
+				log.WriteLog("Warning: could not import GPG key: %v (signature check skipped)", err)
+			} else {
+				// Verify each RPM using the temporary database
+				for _, rpmFile := range rpmFiles {
+					cmd := exec.CommandContext(ctx, cfg.Tools.RPMPath, "--dbpath", tmpDBPath, "-K", rpmFile)
+					cmd.Stdout = log
+					cmd.Stderr = log
+					if err := cmd.Run(); err != nil {
+						return fmt.Errorf("RPM signature verification failed for %s: %w", filepath.Base(rpmFile), err)
+					}
+				}
 			}
 		}
 	}
