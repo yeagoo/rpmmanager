@@ -33,6 +33,7 @@ func (r *BuildRepo) GetByID(id int64) (*models.Build, error) {
 	b := &models.Build{}
 	var targetDistros, architectures string
 	var startedAt, finishedAt sql.NullTime
+	var durationSeconds sql.NullInt64
 	err := r.db.QueryRow(`
 		SELECT b.id, b.product_id, b.version, b.status, b.current_stage, b.trigger_type,
 			b.target_distros, b.architectures, b.rpm_count, b.symlink_count,
@@ -43,7 +44,7 @@ func (r *BuildRepo) GetByID(id int64) (*models.Build, error) {
 		WHERE b.id = ?`, id).Scan(
 		&b.ID, &b.ProductID, &b.Version, &b.Status, &b.CurrentStage, &b.TriggerType,
 		&targetDistros, &architectures, &b.RPMCount, &b.SymlinkCount,
-		&b.ErrorMessage, &b.LogFile, &startedAt, &finishedAt, &b.DurationSeconds, &b.CreatedAt,
+		&b.ErrorMessage, &b.LogFile, &startedAt, &finishedAt, &durationSeconds, &b.CreatedAt,
 		&b.ProductName, &b.ProductDisplayName,
 	)
 	if err != nil {
@@ -56,6 +57,9 @@ func (r *BuildRepo) GetByID(id int64) (*models.Build, error) {
 	}
 	if finishedAt.Valid {
 		b.FinishedAt = &finishedAt.Time
+	}
+	if durationSeconds.Valid {
+		b.DurationSeconds = int(durationSeconds.Int64)
 	}
 	return b, nil
 }
@@ -91,10 +95,11 @@ func (r *BuildRepo) List(productID int64, limit int) ([]models.Build, error) {
 		var b models.Build
 		var targetDistros, architectures string
 		var startedAt, finishedAt sql.NullTime
+		var durationSeconds sql.NullInt64
 		err := rows.Scan(
 			&b.ID, &b.ProductID, &b.Version, &b.Status, &b.CurrentStage, &b.TriggerType,
 			&targetDistros, &architectures, &b.RPMCount, &b.SymlinkCount,
-			&b.ErrorMessage, &b.LogFile, &startedAt, &finishedAt, &b.DurationSeconds, &b.CreatedAt,
+			&b.ErrorMessage, &b.LogFile, &startedAt, &finishedAt, &durationSeconds, &b.CreatedAt,
 			&b.ProductName, &b.ProductDisplayName,
 		)
 		if err != nil {
@@ -107,6 +112,9 @@ func (r *BuildRepo) List(productID int64, limit int) ([]models.Build, error) {
 		}
 		if finishedAt.Valid {
 			b.FinishedAt = &finishedAt.Time
+		}
+		if durationSeconds.Valid {
+			b.DurationSeconds = int(durationSeconds.Int64)
 		}
 		builds = append(builds, b)
 	}
