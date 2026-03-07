@@ -37,16 +37,17 @@ func New(cfg *config.Config, buildRepo *repository.BuildRepo, product *models.Pr
 
 // Run executes the 4-stage pipeline: build → sign → publish → verify.
 func (p *Pipeline) Run(ctx context.Context) error {
+	// Mark build as started
+	p.buildRepo.UpdateStarted(p.build.ID)
+
 	// Create staging directory
 	stagingDir := filepath.Join(p.cfg.Storage.RepoRoot, p.product.Name+".staging")
 	os.RemoveAll(stagingDir)
 	if err := os.MkdirAll(stagingDir, 0755); err != nil {
+		p.buildRepo.UpdateFinished(p.build.ID, models.BuildStatusFailed, err.Error(), 0, 0)
 		return fmt.Errorf("create staging dir: %w", err)
 	}
 	defer os.RemoveAll(stagingDir)
-
-	// Mark build as started
-	p.buildRepo.UpdateStarted(p.build.ID)
 
 	var rpmCount, symlinkCount int
 

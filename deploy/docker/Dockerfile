@@ -37,18 +37,14 @@ RUN microdnf install -y \
     tar \
     && microdnf clean all
 
-# Install nfpm (supports amd64/arm64)
-ARG NFPM_VERSION=2.41.1
-RUN NFPM_ARCH="${TARGETARCH}"; \
-    if [ "$NFPM_ARCH" = "amd64" ]; then NFPM_ARCH="x86_64"; fi; \
-    if [ "$NFPM_ARCH" = "arm64" ]; then NFPM_ARCH="aarch64"; fi; \
-    rpm -i "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_${NFPM_ARCH}.rpm" || \
-    echo "WARNING: nfpm installation failed, builds will not work"
+# Install nfpm (supports x86_64/aarch64)
+ARG NFPM_VERSION=2.45.0
+RUN rpm -i "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm-${NFPM_VERSION}-1.$(uname -m).rpm"
 
 COPY --from=backend /app/rpmmanager /usr/local/bin/rpmmanager
 
 RUN useradd -r -m -d /data rpmmanager
-RUN mkdir -p /data /etc/rpmmanager && chown -R rpmmanager:rpmmanager /data
+RUN mkdir -p /data/repos /etc/rpmmanager && chown -R rpmmanager:rpmmanager /data && chmod 755 /data /data/repos
 
 VOLUME ["/data", "/etc/rpmmanager"]
 EXPOSE 8080

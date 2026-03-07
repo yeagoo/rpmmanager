@@ -40,6 +40,16 @@ func StageSign(ctx context.Context, cfg *config.Config, gpgKeyID string, gpgHome
 		}
 	}
 
+	// Regenerate repodata after signing (RPM sizes change after signing)
+	repodataDirs, _ := filepath.Glob(filepath.Join(stagingDir, "*", "*", "repodata"))
+	for _, repodata := range repodataDirs {
+		archDir := filepath.Dir(repodata) // e.g., staging/el9/x86_64
+		log.WriteLog("Regenerating repodata: %s", archDir)
+		if err := RunCreaterepo(ctx, cfg.Tools.CreaterepoPath, archDir, log); err != nil {
+			return fmt.Errorf("regenerate repodata after signing: %w", err)
+		}
+	}
+
 	// Find all repomd.xml files and create detached signatures
 	repomdFiles, err := filepath.Glob(filepath.Join(stagingDir, "*", "*", "repodata", "repomd.xml"))
 	if err != nil {

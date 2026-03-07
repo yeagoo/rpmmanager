@@ -1,0 +1,25 @@
+[
+  {
+    "name": "testapp",
+    "display_name": "Test App",
+    "description": "A tiny test application for integration testing",
+    "source_type": "url",
+    "source_url_template": "http://testserver/download/testapp/{version}/linux/{arch}/testapp",
+    "nfpm_config": "{\"description\":\"A tiny test application for integration testing\",\"contents\":[{\"src\":\"{{binary}}\",\"dst\":\"/usr/bin/testapp\",\"mode\":\"0755\"}],\"depends\":[],\"rpm_group\":\"Applications/System\"}",
+    "target_distros": ["alma:8", "alma:9", "rocky:9"],
+    "architectures": ["x86_64"],
+    "maintainer": "Test <test@example.com>",
+    "vendor": "RPM Manager Integration Tests",
+    "homepage": "https://github.com/yeagoo/rpmmanager",
+    "license": "MIT",
+    "script_postinstall": "",
+    "script_preremove": "",
+    "systemd_service": "",
+    "default_config": "",
+    "default_config_path": "",
+    "extra_files": "[]",
+    "base_url": "",
+    "sm2_enabled": false,
+    "enabled": true
+  }
+]

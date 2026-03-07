@@ -3,7 +3,8 @@ COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT)
 
 .PHONY: dev dev-backend dev-frontend build build-backend web-build \
-        test lint fmt check release docker docker-up docker-down clean
+        test lint fmt check release docker docker-up docker-down clean \
+        integration-test integration-test-clean
 
 # ── Development ──────────────────────────────────────────────────
 dev:
@@ -90,6 +91,14 @@ docker-down:
 
 docker-logs:
 	cd deploy/docker && docker compose logs -f
+
+# ── Integration Tests ─────────────────────────────────────────────
+integration-test:
+	@echo "Running integration tests..."
+	bash tests/integration/run.sh
+
+integration-test-clean:
+	docker compose -p inttest -f tests/integration/docker-compose.yml down -v --remove-orphans
 
 # ── Clean ────────────────────────────────────────────────────────
 clean:
