@@ -506,7 +506,9 @@ server:
 
 auth:
   username: "admin"
-  # password_hash, jwt_secret, api_token are auto-generated on first run
+  password_hash: ""
+  jwt_secret: ""
+  api_token: ""
 
 database:
   path: "${DATA_DIR}/rpmmanager.db"
