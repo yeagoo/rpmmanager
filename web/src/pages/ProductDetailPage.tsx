@@ -14,7 +14,7 @@ export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const isNew = id === 'new';
+  const isNew = !id || id === 'new';
   const [activeTab, setActiveTab] = useState('settings');
   const { t } = useTranslation('products');
   const { t: tc } = useTranslation('common');
