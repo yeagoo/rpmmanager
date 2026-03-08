@@ -25,6 +25,7 @@ const EMPTY_PRODUCT: Partial<Product> = {
   source_type: 'github',
   source_github_owner: '',
   source_github_repo: '',
+  source_github_asset_pattern: '',
   source_url_template: '',
   nfpm_config: '{}',
   target_distros: [],
@@ -130,6 +131,7 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
           </div>
 
           {form.source_type === 'github' ? (
+            <>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>{t('form.githubOwner')}</Label>
@@ -148,6 +150,18 @@ export default function ProductForm({ initialData, onSubmit, loading }: ProductF
                 />
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>{t('form.githubAssetPattern')}</Label>
+              <Input
+                value={form.source_github_asset_pattern || ''}
+                onChange={(e) => update('source_github_asset_pattern', e.target.value)}
+                placeholder="{repo}_{version}_linux_{arch}"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('form.githubAssetPatternHint')}
+              </p>
+            </div>
+            </>
           ) : (
             <div className="space-y-2">
               <Label>{t('form.urlTemplate')}</Label>

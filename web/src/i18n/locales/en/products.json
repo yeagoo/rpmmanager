@@ -45,6 +45,8 @@
     "customUrl": "Custom URL",
     "githubOwner": "GitHub Owner",
     "githubRepo": "GitHub Repo",
+    "githubAssetPattern": "Asset Filename Pattern",
+    "githubAssetPatternHint": "Placeholders: {repo}, {owner}, {version}, {arch}. Default: {repo}_{version}_linux_{arch}. Add .tar.gz for archives (e.g., {repo}_{version}_linux_{arch}.tar.gz)",
     "urlTemplate": "URL Template",
     "urlTemplateHint": "Use {version} and {arch} as placeholders",
     "homepage": "Homepage",

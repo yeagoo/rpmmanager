@@ -12,8 +12,9 @@ type Product struct {
 	Description       string    `json:"description"`
 	SourceType        string    `json:"source_type"`
 	SourceGithubOwner string    `json:"source_github_owner"`
-	SourceGithubRepo  string    `json:"source_github_repo"`
-	SourceURLTemplate string    `json:"source_url_template"`
+	SourceGithubRepo         string    `json:"source_github_repo"`
+	SourceGithubAssetPattern string    `json:"source_github_asset_pattern"`
+	SourceURLTemplate        string    `json:"source_url_template"`
 	NfpmConfig        string    `json:"nfpm_config"`
 	TargetDistros     []string  `json:"target_distros"`
 	Architectures     []string  `json:"architectures"`

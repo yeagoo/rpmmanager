@@ -1,6 +1,8 @@
 package pipeline
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -126,10 +128,19 @@ func downloadBinary(ctx context.Context, cfg *config.Config, product *models.Pro
 
 	var url string
 	if product.SourceType == "github" {
-		// Use GitHub releases download URL pattern
-		url = fmt.Sprintf("https://github.com/%s/%s/releases/download/v%s/%s_%s_linux_%s",
-			product.SourceGithubOwner, product.SourceGithubRepo, version,
-			product.SourceGithubRepo, version, downloadArch)
+		// Build asset filename from pattern or use default
+		assetPattern := product.SourceGithubAssetPattern
+		if assetPattern == "" {
+			assetPattern = "{repo}_{version}_linux_{arch}"
+		}
+		assetName := assetPattern
+		assetName = strings.ReplaceAll(assetName, "{repo}", product.SourceGithubRepo)
+		assetName = strings.ReplaceAll(assetName, "{owner}", product.SourceGithubOwner)
+		assetName = strings.ReplaceAll(assetName, "{version}", version)
+		assetName = strings.ReplaceAll(assetName, "{arch}", downloadArch)
+
+		url = fmt.Sprintf("https://github.com/%s/%s/releases/download/v%s/%s",
+			product.SourceGithubOwner, product.SourceGithubRepo, version, assetName)
 	} else {
 		// Custom URL template
 		url = product.SourceURLTemplate
@@ -139,7 +150,7 @@ func downloadBinary(ctx context.Context, cfg *config.Config, product *models.Pro
 
 	log.WriteLog("Downloading: %s", url)
 
-	// Create temp file for binary
+	// Create temp file for download
 	binDir := filepath.Join(cfg.Storage.TempDir, "binaries", product.Name)
 	os.MkdirAll(binDir, 0755)
 	binPath := filepath.Join(binDir, fmt.Sprintf("%s-%s-%s", product.Name, version, arch))
@@ -160,6 +171,13 @@ func downloadBinary(ctx context.Context, cfg *config.Config, product *models.Pro
 		return "", fmt.Errorf("download returned HTTP %d", resp.StatusCode)
 	}
 
+	// Check if the URL indicates a tar.gz archive
+	if strings.HasSuffix(url, ".tar.gz") || strings.HasSuffix(url, ".tgz") {
+		// Download and extract binary from tar.gz
+		return extractBinaryFromTarGz(resp.Body, binPath, product.Name, log)
+	}
+
+	// Direct binary download
 	f, err := os.Create(binPath)
 	if err != nil {
 		return "", err
@@ -175,4 +193,51 @@ func downloadBinary(ctx context.Context, cfg *config.Config, product *models.Pro
 	log.WriteLog("Downloaded %s (%d bytes)", filepath.Base(binPath), written)
 
 	return binPath, nil
+}
+
+// extractBinaryFromTarGz extracts a binary from a tar.gz archive.
+// It looks for an executable file matching the product name.
+func extractBinaryFromTarGz(reader io.Reader, binPath, productName string, log *LogWriter) (string, error) {
+	gz, err := gzip.NewReader(reader)
+	if err != nil {
+		return "", fmt.Errorf("open gzip: %w", err)
+	}
+	defer gz.Close()
+
+	tr := tar.NewReader(gz)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", fmt.Errorf("read tar: %w", err)
+		}
+
+		// Skip directories and non-regular files
+		if hdr.Typeflag != tar.TypeReg {
+			continue
+		}
+
+		// Match the binary: look for a file whose base name equals the product name
+		baseName := filepath.Base(hdr.Name)
+		if baseName == productName {
+			f, err := os.Create(binPath)
+			if err != nil {
+				return "", err
+			}
+			defer f.Close()
+
+			written, err := io.Copy(f, tr)
+			if err != nil {
+				return "", fmt.Errorf("extract binary: %w", err)
+			}
+
+			os.Chmod(binPath, 0755)
+			log.WriteLog("Extracted %s from archive (%d bytes)", baseName, written)
+			return binPath, nil
+		}
+	}
+
+	return "", fmt.Errorf("binary %q not found in tar.gz archive", productName)
 }

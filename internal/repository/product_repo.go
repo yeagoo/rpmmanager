@@ -19,15 +19,15 @@ func (r *ProductRepo) Create(p *models.Product) (int64, error) {
 	result, err := r.db.Exec(`
 		INSERT INTO products (
 			name, display_name, description,
-			source_type, source_github_owner, source_github_repo, source_url_template,
+			source_type, source_github_owner, source_github_repo, source_github_asset_pattern, source_url_template,
 			nfpm_config, target_distros, architectures, product_lines,
 			maintainer, vendor, homepage, license,
 			script_postinstall, script_preremove,
 			systemd_service, default_config, default_config_path,
 			extra_files, gpg_key_id, base_url, sm2_enabled, enabled
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.Name, p.DisplayName, p.Description,
-		p.SourceType, p.SourceGithubOwner, p.SourceGithubRepo, p.SourceURLTemplate,
+		p.SourceType, p.SourceGithubOwner, p.SourceGithubRepo, p.SourceGithubAssetPattern, p.SourceURLTemplate,
 		p.NfpmConfig, p.TargetDistrosJSON(), p.ArchitecturesJSON(), nilIfEmpty(p.ProductLines),
 		p.Maintainer, p.Vendor, p.Homepage, p.License,
 		p.ScriptPostinstall, p.ScriptPreremove,
@@ -46,7 +46,7 @@ func (r *ProductRepo) GetByName(name string) (*models.Product, error) {
 	var productLines sql.NullString
 	err := r.db.QueryRow(`SELECT
 		id, name, display_name, description,
-		source_type, source_github_owner, source_github_repo, source_url_template,
+		source_type, source_github_owner, source_github_repo, source_github_asset_pattern, source_url_template,
 		nfpm_config, target_distros, architectures, product_lines,
 		maintainer, vendor, homepage, license,
 		script_postinstall, script_preremove,
@@ -55,7 +55,7 @@ func (r *ProductRepo) GetByName(name string) (*models.Product, error) {
 		created_at, updated_at
 		FROM products WHERE name = ?`, name).Scan(
 		&p.ID, &p.Name, &p.DisplayName, &p.Description,
-		&p.SourceType, &p.SourceGithubOwner, &p.SourceGithubRepo, &p.SourceURLTemplate,
+		&p.SourceType, &p.SourceGithubOwner, &p.SourceGithubRepo, &p.SourceGithubAssetPattern, &p.SourceURLTemplate,
 		&p.NfpmConfig, &targetDistros, &architectures, &productLines,
 		&p.Maintainer, &p.Vendor, &p.Homepage, &p.License,
 		&p.ScriptPostinstall, &p.ScriptPreremove,
@@ -80,7 +80,7 @@ func (r *ProductRepo) GetByID(id int64) (*models.Product, error) {
 	var productLines sql.NullString
 	err := r.db.QueryRow(`SELECT
 		id, name, display_name, description,
-		source_type, source_github_owner, source_github_repo, source_url_template,
+		source_type, source_github_owner, source_github_repo, source_github_asset_pattern, source_url_template,
 		nfpm_config, target_distros, architectures, product_lines,
 		maintainer, vendor, homepage, license,
 		script_postinstall, script_preremove,
@@ -89,7 +89,7 @@ func (r *ProductRepo) GetByID(id int64) (*models.Product, error) {
 		created_at, updated_at
 		FROM products WHERE id = ?`, id).Scan(
 		&p.ID, &p.Name, &p.DisplayName, &p.Description,
-		&p.SourceType, &p.SourceGithubOwner, &p.SourceGithubRepo, &p.SourceURLTemplate,
+		&p.SourceType, &p.SourceGithubOwner, &p.SourceGithubRepo, &p.SourceGithubAssetPattern, &p.SourceURLTemplate,
 		&p.NfpmConfig, &targetDistros, &architectures, &productLines,
 		&p.Maintainer, &p.Vendor, &p.Homepage, &p.License,
 		&p.ScriptPostinstall, &p.ScriptPreremove,
@@ -112,7 +112,7 @@ func (r *ProductRepo) List() ([]models.ProductListItem, error) {
 	rows, err := r.db.Query(`
 		SELECT
 			p.id, p.name, p.display_name, p.description,
-			p.source_type, p.source_github_owner, p.source_github_repo, p.source_url_template,
+			p.source_type, p.source_github_owner, p.source_github_repo, p.source_github_asset_pattern, p.source_url_template,
 			p.nfpm_config, p.target_distros, p.architectures, p.product_lines,
 			p.maintainer, p.vendor, p.homepage, p.license,
 			p.script_postinstall, p.script_preremove,
@@ -135,7 +135,7 @@ func (r *ProductRepo) List() ([]models.ProductListItem, error) {
 		var productLines sql.NullString
 		err := rows.Scan(
 			&item.ID, &item.Name, &item.DisplayName, &item.Description,
-			&item.SourceType, &item.SourceGithubOwner, &item.SourceGithubRepo, &item.SourceURLTemplate,
+			&item.SourceType, &item.SourceGithubOwner, &item.SourceGithubRepo, &item.SourceGithubAssetPattern, &item.SourceURLTemplate,
 			&item.NfpmConfig, &targetDistros, &architectures, &productLines,
 			&item.Maintainer, &item.Vendor, &item.Homepage, &item.License,
 			&item.ScriptPostinstall, &item.ScriptPreremove,
@@ -161,7 +161,7 @@ func (r *ProductRepo) Update(p *models.Product) error {
 	_, err := r.db.Exec(`
 		UPDATE products SET
 			name = ?, display_name = ?, description = ?,
-			source_type = ?, source_github_owner = ?, source_github_repo = ?, source_url_template = ?,
+			source_type = ?, source_github_owner = ?, source_github_repo = ?, source_github_asset_pattern = ?, source_url_template = ?,
 			nfpm_config = ?, target_distros = ?, architectures = ?, product_lines = ?,
 			maintainer = ?, vendor = ?, homepage = ?, license = ?,
 			script_postinstall = ?, script_preremove = ?,
@@ -170,7 +170,7 @@ func (r *ProductRepo) Update(p *models.Product) error {
 			updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`,
 		p.Name, p.DisplayName, p.Description,
-		p.SourceType, p.SourceGithubOwner, p.SourceGithubRepo, p.SourceURLTemplate,
+		p.SourceType, p.SourceGithubOwner, p.SourceGithubRepo, p.SourceGithubAssetPattern, p.SourceURLTemplate,
 		p.NfpmConfig, p.TargetDistrosJSON(), p.ArchitecturesJSON(), nilIfEmpty(p.ProductLines),
 		p.Maintainer, p.Vendor, p.Homepage, p.License,
 		p.ScriptPostinstall, p.ScriptPreremove,

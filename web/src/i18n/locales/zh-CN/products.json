@@ -45,6 +45,8 @@
     "customUrl": "自定义 URL",
     "githubOwner": "GitHub 所有者",
     "githubRepo": "GitHub 仓库",
+    "githubAssetPattern": "资产文件名模式",
+    "githubAssetPatternHint": "占位符：{repo}、{owner}、{version}、{arch}。默认：{repo}_{version}_linux_{arch}。归档文件请加后缀（如 {repo}_{version}_linux_{arch}.tar.gz）",
     "urlTemplate": "URL 模板",
     "urlTemplateHint": "使用 {version} 和 {arch} 作为占位符",
     "homepage": "主页",

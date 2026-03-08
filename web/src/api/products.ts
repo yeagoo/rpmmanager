@@ -8,6 +8,7 @@ export interface Product {
   source_type: 'github' | 'url';
   source_github_owner: string;
   source_github_repo: string;
+  source_github_asset_pattern: string;
   source_url_template: string;
   nfpm_config: string;
   target_distros: string[];

@@ -32,6 +32,12 @@ export const gpgKeysApi = {
   importKey: (keyData: string) => apiClient.post<GPGKey>('/gpg-keys/import', { key_data: keyData }),
   generate: (req: GenerateKeyRequest) => apiClient.post<GPGKey>('/gpg-keys/generate', req),
   delete: (id: number) => apiClient.delete(`/gpg-keys/${id}`),
-  export: (id: number) => apiClient.get<string>(`/gpg-keys/${id}/export`),
+  export: async (id: number): Promise<string> => {
+    const resp = await fetch(`/api/gpg-keys/${id}/export`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+    });
+    if (!resp.ok) throw new Error(`Export failed: HTTP ${resp.status}`);
+    return resp.text();
+  },
   setDefault: (id: number) => apiClient.post(`/gpg-keys/${id}/default`),
 };
