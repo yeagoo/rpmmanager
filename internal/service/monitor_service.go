@@ -177,8 +177,10 @@ func (s *MonitorService) checkGitHubRelease(owner, repo string) (string, error) 
 		return "", fmt.Errorf("github api decode: %w", err)
 	}
 
-	// Strip leading 'v' prefix
-	version := strings.TrimPrefix(release.TagName, "v")
+	// Strip common tag prefixes (e.g. "v1.2.3", "release-1.2.3")
+	version := release.TagName
+	version = strings.TrimPrefix(version, "v")
+	version = strings.TrimPrefix(version, "release-")
 	return version, nil
 }
 

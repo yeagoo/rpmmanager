@@ -1,0 +1,34 @@
+[
+  {
+    "name": "nginx",
+    "display_name": "Nginx",
+    "description": "High performance HTTP and reverse proxy server",
+    "source_type": "github",
+    "source_github_owner": "nginx",
+    "source_github_repo": "nginx",
+    "source_github_asset_pattern": "nginx-{version_no_v}.tar.gz",
+    "nfpm_config": "{\"description\":\"High performance HTTP and reverse proxy server\",\"contents\":[{\"src\":\"{{binary}}\",\"dst\":\"/usr/sbin/nginx\",\"mode\":\"0755\"},{\"src\":\"{{systemd_service}}\",\"dst\":\"/usr/lib/systemd/system/nginx.service\"},{\"src\":\"{{default_config}}\",\"dst\":\"/etc/nginx/nginx.conf\",\"type\":\"config|noreplace\"},{\"dst\":\"/etc/nginx/conf.d\",\"type\":\"dir\"},{\"dst\":\"/var/log/nginx\",\"type\":\"dir\"},{\"dst\":\"/var/cache/nginx\",\"type\":\"dir\"},{\"dst\":\"/var/cache/nginx/client_temp\",\"type\":\"dir\"},{\"dst\":\"/var/cache/nginx/proxy_temp\",\"type\":\"dir\"},{\"dst\":\"/var/cache/nginx/fastcgi_temp\",\"type\":\"dir\"},{\"dst\":\"/usr/share/nginx/html\",\"type\":\"dir\"}],\"depends\":[\"openssl\",\"pcre2\",\"zlib\"],\"rpm_group\":\"System Environment/Daemons\"}",
+    "target_distros": [
+      "rhel:8", "centos:8", "alma:8", "rocky:8", "oracle:8", "anolis:8",
+      "rhel:9", "centos:9", "alma:9", "rocky:9", "oracle:9", "anolis:23", "alinux:3",
+      "rhel:10", "centos:10", "alma:10", "rocky:10",
+      "amzn:2023",
+      "fedora:42", "fedora:43",
+      "openeuler:22", "openeuler:24"
+    ],
+    "architectures": ["x86_64", "aarch64"],
+    "maintainer": "Nginx Inc. <nginx@nginx.org>",
+    "vendor": "Nginx Inc.",
+    "homepage": "https://nginx.org",
+    "license": "BSD-2-Clause",
+    "script_postinstall": "#!/bin/bash\n# Create nginx group and user if not exists\ngetent group nginx >/dev/null || groupadd --system nginx\ngetent passwd nginx >/dev/null || useradd --system \\\n    --gid nginx \\\n    --no-create-home \\\n    --home-dir /var/cache/nginx \\\n    --shell /usr/sbin/nologin \\\n    --comment \"nginx web server\" nginx\n\n# Ensure directory ownership\nmkdir -p /etc/nginx/conf.d\nmkdir -p /var/log/nginx\nmkdir -p /var/cache/nginx/{client_temp,proxy_temp,fastcgi_temp}\nmkdir -p /usr/share/nginx/html\nchown -R nginx:nginx /var/log/nginx /var/cache/nginx\n\n# Create default index.html if not exists\nif [ ! -f /usr/share/nginx/html/index.html ]; then\n    cat > /usr/share/nginx/html/index.html <<'EOF'\n<!DOCTYPE html>\n<html>\n<head><title>Welcome to nginx!</title></head>\n<body>\n<h1>Welcome to nginx!</h1>\n<p>If you see this page, the nginx web server is successfully installed.</p>\n</body>\n</html>\nEOF\nfi\n\n# Reload systemd and enable service\nsystemctl daemon-reload\nsystemctl enable nginx.service 2>/dev/null || true\n\n# If this is an upgrade and the service was running, restart it\nif systemctl is-active --quiet nginx.service 2>/dev/null; then\n    systemctl restart nginx.service\nfi",
+    "script_preremove": "#!/bin/bash\n# Only run on uninstall (not upgrade)\nif [ \"$1\" = \"0\" ] || [ \"$1\" = \"remove\" ]; then\n    if systemctl is-active --quiet nginx.service 2>/dev/null; then\n        systemctl stop nginx.service\n    fi\n    systemctl disable nginx.service 2>/dev/null || true\nfi",
+    "systemd_service": "[Unit]\nDescription=The nginx HTTP and reverse proxy server\nDocumentation=https://nginx.org/en/docs/\nAfter=network-online.target remote-fs.target nss-lookup.target\nWants=network-online.target\n\n[Service]\nType=forking\nPIDFile=/run/nginx.pid\nExecStartPre=/usr/sbin/nginx -t\nExecStart=/usr/sbin/nginx\nExecReload=/bin/kill -s HUP $MAINPID\nExecStop=/bin/kill -s QUIT $MAINPID\nPrivateTmp=true\n\n[Install]\nWantedBy=multi-user.target",
+    "default_config": "user nginx;\nworker_processes auto;\nerror_log /var/log/nginx/error.log notice;\npid /run/nginx.pid;\n\nevents {\n    worker_connections 1024;\n}\n\nhttp {\n    include       /etc/nginx/mime.types;\n    default_type  application/octet-stream;\n\n    log_format main '$remote_addr - $remote_user [$time_local] \"$request\" '\n                    '$status $body_bytes_sent \"$http_referer\" '\n                    '\"$http_user_agent\" \"$http_x_forwarded_for\"';\n\n    access_log /var/log/nginx/access.log main;\n\n    sendfile        on;\n    tcp_nopush      on;\n    keepalive_timeout 65;\n    gzip            on;\n\n    include /etc/nginx/conf.d/*.conf;\n\n    server {\n        listen       80;\n        server_name  _;\n        root         /usr/share/nginx/html;\n\n        location / {\n        }\n    }\n}\n",
+    "default_config_path": "/etc/nginx/nginx.conf",
+    "base_url": "",
+    "sm2_enabled": false,
+    "enabled": true,
+    "extra_files": "[]"
+  }
+]
