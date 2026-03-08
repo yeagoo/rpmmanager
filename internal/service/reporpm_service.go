@@ -162,10 +162,9 @@ func (s *RepoRPMService) Generate(req *RepoRPMRequest) (*RepoRPMResult, error) {
 	}
 
 	return &RepoRPMResult{
-		FileName:    rpmFileName,
-		FilePath:    rpmFilePath,
-		Size:        info.Size(),
-		DownloadURL: fmt.Sprintf("/api/products/%s/repo-rpm/download", req.ProductName),
+		FileName: rpmFileName,
+		FilePath: rpmFilePath,
+		Size:     info.Size(),
 	}, nil
 }
 

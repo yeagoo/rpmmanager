@@ -86,9 +86,12 @@ func (s *BuildService) TriggerBuild(req *models.TriggerBuildRequest, triggerType
 	}
 	build.ID = buildID
 
-	// Create log writer
+	// Create log writer — if this fails, mark the build as failed
+	// so it doesn't stay in "pending" forever and block future builds.
 	logWriter, err := pipeline.NewLogWriter(logFilePath)
 	if err != nil {
+		s.buildRepo.UpdateFinished(buildID, models.BuildStatusFailed,
+			fmt.Sprintf("create log writer: %v", err), 0, 0)
 		return nil, fmt.Errorf("create log writer: %w", err)
 	}
 

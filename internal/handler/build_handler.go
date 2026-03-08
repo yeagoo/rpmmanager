@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -96,6 +97,9 @@ func (h *BuildHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "cancelled"})
 }
 
+// maxLogSize limits how much log data we serve to avoid unbounded memory usage.
+const maxLogSize = 10 << 20 // 10 MiB
+
 func (h *BuildHandler) GetLog(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
@@ -122,12 +126,13 @@ func (h *BuildHandler) GetLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err := os.ReadFile(absLogFile)
+	f, err := os.Open(absLogFile)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "log file not found"})
 		return
 	}
+	defer f.Close()
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write(content)
+	io.Copy(w, io.LimitReader(f, maxLogSize))
 }

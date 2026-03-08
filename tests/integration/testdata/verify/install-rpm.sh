@@ -34,7 +34,7 @@ name=${PRODUCT}
 baseurl=${REPO_BASE}/${PRODUCT}/${EL_VERSION}/${ARCH}/
 enabled=1
 gpgcheck=1
-repo_gpgcheck=0
+repo_gpgcheck=1
 gpgkey=${REPO_BASE}/${PRODUCT}/gpg.key
 EOF
 

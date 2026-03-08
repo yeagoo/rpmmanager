@@ -1,10 +1,11 @@
 package pipeline
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ivmm/rpmmanager/internal/distromap"
 )
@@ -58,22 +59,25 @@ gpgkey=%s/%s/gpg.key
 	return nil
 }
 
-func generateTemplatesIndex(templatesDir, productName, baseURL string, repoFiles []string) error {
-	var rows strings.Builder
-	for _, f := range repoFiles {
-		rows.WriteString(fmt.Sprintf("      <tr><td><a href=\"%s\">%s</a></td><td><code>curl -o /etc/yum.repos.d/%s %s/%s/templates/%s</code></td></tr>\n",
-			f, f, f, baseURL, productName, f))
-	}
+type repoFileEntry struct {
+	FileName string
+	CurlCmd  string
+}
 
-	html := fmt.Sprintf(`<!DOCTYPE html>
+type templatesIndexData struct {
+	ProductName string
+	Files       []repoFileEntry
+}
+
+var templatesIndexTmpl = template.Must(template.New("index").Parse(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>%s - Repository Templates</title>
+  <title>{{.ProductName}} - Repository Templates</title>
   <style>
     body { font-family: -apple-system, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #333; }
     h1 { border-bottom: 1px solid #eee; padding-bottom: 10px; }
-    table { border-collapse: collapse; width: 100%%; }
+    table { border-collapse: collapse; width: 100%; }
     th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #eee; }
     th { background: #f8f8f8; }
     a { color: #0366d6; text-decoration: none; }
@@ -82,16 +86,36 @@ func generateTemplatesIndex(templatesDir, productName, baseURL string, repoFiles
   </style>
 </head>
 <body>
-  <h1>%s - Repository Templates</h1>
+  <h1>{{.ProductName}} - Repository Templates</h1>
   <p>Download a <code>.repo</code> file and place it in <code>/etc/yum.repos.d/</code> to enable this repository.</p>
   <table>
     <thead><tr><th>File</th><th>Quick Install</th></tr></thead>
     <tbody>
-%s    </tbody>
+{{- range .Files}}
+      <tr><td><a href="{{.FileName}}">{{.FileName}}</a></td><td><code>{{.CurlCmd}}</code></td></tr>
+{{- end}}
+    </tbody>
   </table>
 </body>
 </html>
-`, productName, productName, rows.String())
+`))
 
-	return os.WriteFile(filepath.Join(templatesDir, "index.html"), []byte(html), 0644)
+func generateTemplatesIndex(templatesDir, productName, baseURL string, repoFiles []string) error {
+	var files []repoFileEntry
+	for _, f := range repoFiles {
+		files = append(files, repoFileEntry{
+			FileName: f,
+			CurlCmd:  fmt.Sprintf("curl -o /etc/yum.repos.d/%s %s/%s/templates/%s", f, baseURL, productName, f),
+		})
+	}
+
+	var buf bytes.Buffer
+	if err := templatesIndexTmpl.Execute(&buf, templatesIndexData{
+		ProductName: productName,
+		Files:       files,
+	}); err != nil {
+		return fmt.Errorf("execute template: %w", err)
+	}
+
+	return os.WriteFile(filepath.Join(templatesDir, "index.html"), buf.Bytes(), 0644)
 }

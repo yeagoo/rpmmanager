@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -80,6 +81,7 @@ func (h *RepoRPMHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	result.DownloadURL = fmt.Sprintf("/api/products/%d/repo-rpm/download", id)
 	writeJSON(w, http.StatusOK, result)
 }
 
@@ -108,6 +110,7 @@ func (h *RepoRPMHandler) GetLatest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	result.DownloadURL = fmt.Sprintf("/api/products/%d/repo-rpm/download", id)
 	writeJSON(w, http.StatusOK, result)
 }
 

@@ -96,6 +96,8 @@ func GenerateNfpmYAML(
 		if c.Mode != "" {
 			if mode, err := strconv.ParseUint(c.Mode, 8, 32); err == nil {
 				item["file_info"] = map[string]interface{}{"mode": mode}
+			} else {
+				return "", fmt.Errorf("invalid octal file mode %q for %s: %w", c.Mode, c.Dst, err)
 			}
 		}
 		contents = append(contents, item)

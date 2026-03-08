@@ -222,15 +222,10 @@ func extractBinaryFromTarGz(reader io.Reader, binPath, productName string, log *
 		// Match the binary: look for a file whose base name equals the product name
 		baseName := filepath.Base(hdr.Name)
 		if baseName == productName {
-			f, err := os.Create(binPath)
-			if err != nil {
-				return "", err
-			}
-			defer f.Close()
-
-			written, err := io.Copy(f, tr)
-			if err != nil {
-				return "", fmt.Errorf("extract binary: %w", err)
+			written, copyErr := extractFileFromTar(tr, binPath)
+			if copyErr != nil {
+				os.Remove(binPath)
+				return "", fmt.Errorf("extract binary: %w", copyErr)
 			}
 
 			os.Chmod(binPath, 0755)
@@ -240,4 +235,18 @@ func extractBinaryFromTarGz(reader io.Reader, binPath, productName string, log *
 	}
 
 	return "", fmt.Errorf("binary %q not found in tar.gz archive", productName)
+}
+
+// extractFileFromTar writes a tar entry to disk, cleaning up on failure.
+func extractFileFromTar(tr *tar.Reader, destPath string) (int64, error) {
+	f, err := os.Create(destPath)
+	if err != nil {
+		return 0, err
+	}
+
+	written, err := io.Copy(f, tr)
+	if closeErr := f.Close(); closeErr != nil && err == nil {
+		err = closeErr
+	}
+	return written, err
 }

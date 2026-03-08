@@ -160,7 +160,7 @@ install_dependencies() {
                 nfpm_arch=$(uname -m)
                 nfpm_ver=$(curl -fsSL https://api.github.com/repos/goreleaser/nfpm/releases/latest 2>/dev/null | grep '"tag_name"' | head -1 | cut -d'"' -f4 | sed 's/^v//')
                 nfpm_ver="${nfpm_ver:-2.45.0}"
-                rpm -i "https://github.com/goreleaser/nfpm/releases/download/v${nfpm_ver}/nfpm_${nfpm_ver}_${nfpm_arch}.rpm" 2>/dev/null || \
+                rpm -i "https://github.com/goreleaser/nfpm/releases/download/v${nfpm_ver}/nfpm-${nfpm_ver}-1.${nfpm_arch}.rpm" 2>/dev/null || \
                     warn "nfpm installation failed — install manually: https://nfpm.goreleaser.com/install/"
             fi
             ;;

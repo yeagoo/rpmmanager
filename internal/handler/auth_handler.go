@@ -127,16 +127,21 @@ func decodeJSON(r *http.Request, v interface{}) error {
 }
 
 // clientIP extracts the real client IP.
-// Priority: X-Real-IP (set by trusted reverse proxy) > RemoteAddr.
+// Only trusts X-Real-IP when the direct connection comes from a loopback
+// or private IP (i.e., a local reverse proxy like Nginx/Caddy).
 // X-Forwarded-For is NOT used because it can be spoofed by the client.
-// If deploying behind Nginx/Caddy, configure them to set X-Real-IP.
 func clientIP(r *http.Request) string {
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return strings.TrimSpace(xri)
-	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		host = r.RemoteAddr
 	}
+
+	// Only trust X-Real-IP from local/private network peers
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		if ip := net.ParseIP(host); ip != nil && (ip.IsLoopback() || ip.IsPrivate()) {
+			return strings.TrimSpace(xri)
+		}
+	}
+
 	return host
 }

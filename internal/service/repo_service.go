@@ -188,20 +188,24 @@ func (s *RepoService) Rollback(product, snapshot string) error {
 		return fmt.Errorf("rollback snapshot not found: %s", snapshot)
 	}
 
-	// Move current to temp backup
+	// Move current to temp backup.
+	// After this rename, the snapshot is at tempBackup/.rollback/<snapshot>.
 	tempBackup := productDir + ".rollback-tmp"
 	if err := os.Rename(productDir, tempBackup); err != nil {
 		return fmt.Errorf("backup current: %w", err)
 	}
 
+	// The snapshot path is now inside the temp backup directory
+	movedRollbackSrc := filepath.Join(tempBackup, ".rollback", snapshot)
+
 	// Move rollback snapshot to current
-	if err := os.Rename(rollbackSrc, productDir); err != nil {
+	if err := os.Rename(movedRollbackSrc, productDir); err != nil {
 		// Try to restore
 		os.Rename(tempBackup, productDir)
 		return fmt.Errorf("restore rollback: %w", err)
 	}
 
-	// Restore .rollback dir from temp backup
+	// Restore .rollback dir from temp backup (preserves other snapshots)
 	oldRollback := filepath.Join(tempBackup, ".rollback")
 	newRollback := filepath.Join(productDir, ".rollback")
 	if err := os.Rename(oldRollback, newRollback); err != nil {
